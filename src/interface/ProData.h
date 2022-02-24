@@ -1077,8 +1077,12 @@ struct Operation {
       double Alpha;
     } AddCorrection;
     struct {
-      double Alpha;
+      int ExpressionIndex;
     } MultiplySolution;
+    struct {
+      int  ExpressionIndex;
+	  int  ConstraintIndex;
+    } MultiplyConstraint ;
     struct {
       int Size;
       List_T *Save;
@@ -1417,6 +1421,7 @@ struct IterativeLoopSystem {
 #define OPERATION_SCATTERVARIABLES 117
 #define OPERATION_EXIT 118
 #define OPERATION_GENERATELISTOFRHS 119
+#define OPERATION_MULTIPLYCONSTRAINT         120
 
 /* ChangeOfState.Type */
 #define CHANGEOFSTATE_NOCHANGE 0
