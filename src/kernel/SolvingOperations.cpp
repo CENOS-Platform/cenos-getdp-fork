@@ -297,6 +297,7 @@ void Generate_System(struct DefineSystem *DefineSystem_P,
     Solution_S.TimeStep = (int)Current.TimeStep;
     Solution_S.Time = Current.Time;
     Solution_S.TimeImag = Current.TimeImag;
+    Solution_S.Frequency = Current.Frequency;
     Solution_S.TimeFunctionValues = Get_TimeFunctionValues(DofData_P);
     Solution_S.SolutionExist = 1;
     LinAlg_CreateVector(&Solution_S.x, &DofData_P->Solver, DofData_P->NbrDof);
@@ -826,6 +827,9 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
   int row_old, row_new, col_old, col_new;
 
   double aii, ajj;
+
+  double freq = 0.0;
+
 
   List_T *DofList_MH_moving;
   static int NbrDof_MH_moving;
@@ -1972,8 +1976,10 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
           RES0 = (int)Current.TimeStep;
         }
       }
+      if(List_Nbr(DefineSystem_P->FrequencyValue) == 1)
+        List_Read(DefineSystem_P->FrequencyValue, 0, &freq);
       Dof_WriteFileRES(ResName, DofData_P, Flag_BIN, Current.Time,
-                       Current.TimeImag, (int)Current.TimeStep);
+                       Current.TimeImag, (int)Current.TimeStep, freq);
       break;
 
       /*  -->  S a v e S o l u t i o n W i t h E n t i t y N u m  */
@@ -2013,10 +2019,13 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
           (struct Solution *)List_Pointer(DofData_P->Solutions, i);
         if(!DofData_P->CurrentSolution->SolutionExist)
           Message::Warning("Solution #%d doesn't exist anymore: skipping", i);
-        else
+        else {
+          if(List_Nbr(DefineSystem_P->FrequencyValue) == 1)
+            List_Read(DefineSystem_P->FrequencyValue, 0, &freq);
           Dof_WriteFileRES(ResName, DofData_P, Flag_BIN,
                            DofData_P->CurrentSolution->Time,
-                           DofData_P->CurrentSolution->TimeImag, i);
+                           DofData_P->CurrentSolution->TimeImag, i, freq);
+        }
       }
       break;
 
@@ -2788,6 +2797,7 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
         if(DofData_P->Pulsation == NULL)
           DofData_P->Pulsation = List_Create(1, 2, sizeof(double));
         List_Reset(DofData_P->Pulsation);
+        Current.Frequency = Value.Val[0];
         Init_HarInDofData(DefineSystem_P, DofData_P);
       }
       else

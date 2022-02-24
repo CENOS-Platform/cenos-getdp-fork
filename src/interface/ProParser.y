@@ -326,7 +326,7 @@ struct doubleXstring{
 %token      tNameOfFormulation tNameOfMesh tFrequency tSolver
 %token      tOriginSystem tDestinationSystem
 %token    tOperation tOperationEnd
-%token      tSetTime tSetTimeStep tSetDTime tDTime tSetFrequency
+%token      tSetTime tSetTimeStep tSetDTime tDTime tFrequencyValue tSetFrequency
 %token      tFourierTransform tFourierTransformJ
 %token      tCopySolution tCopyRHS tCopyResidual tCopyIncrement tCopyDofs
 %token      tGetNormSolution tGetNormResidual tGetNormRHS tGetNormIncrement
@@ -1809,6 +1809,12 @@ WholeQuantity_Single :
     { WholeQuantity_S.Type = WQ_CONSTANT ;
       WholeQuantity_S.Case.Constant = $1 ;
       List_Add(Current_WholeQuantity_L, &WholeQuantity_S) ;
+    }
+  | '$' tFrequencyValue
+    { WholeQuantity_S.Type = WQ_CURRENTVALUE;
+      Get_PointerForString(Current_Value, "Frequency", &FlagError,
+			   (void **)&WholeQuantity_S.Case.CurrentValue.Value);
+      List_Add(Current_WholeQuantity_L, &WholeQuantity_S);
     }
  ;
 
