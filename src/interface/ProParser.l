@@ -109,10 +109,11 @@ Atan2                        return tAtan2;
 Atanh                        return tAtanh;
 Auto                         return tAuto;
 
-Barrier			     return tBarrier;
+Barrier			     		 return tBarrier;
 BaseFileName                 return tBaseFileName;
 BasisFunction                return tBasisFunction;
 Beta                         return tBeta;
+Binary                       return tBinary;
 Branch                       return tBranch;
 Break                        return tBreak;
 BroadcastFields              return tBroadcastFields;
@@ -331,7 +332,7 @@ MeshMovingBand2D             return tMeshMovingBand2D;
 MetricTensor                 return tMetricTensor;
 Modulo                       return tModulo;
 MovingBand2D                 return tMovingBand2D;
-MultiplySolution             return tMultiplySolution;
+MultiplySolution             return tMultiplySolution ;
 MultiplyConstraint           return tMultiplyConstraint;
 
 Name                         return tName;
@@ -379,6 +380,7 @@ OverrideTimeStepValue        return tOverrideTimeStepValue;
 Parse                        return tParse;
 Pi                           return tPi;
 Plot                         return tPlot;
+PointData                    return tPointData;
 PostOperation                return tPostOperation;
 PostProcessing               return tPostProcessing;
 PostQuantity                 return tQuantity;
@@ -386,6 +388,7 @@ Print                        return tPrint;
 PrintConstants               return tPrintConstants;
 PrintGroup                   return tPrintGroup;
 Printf                       return tPrintf;
+PrintExternal                return tPrintExternal;
 
 Quantity                     return tQuantity;
 
@@ -506,6 +509,7 @@ UsingPost                    return tUsingPost;
 Value                        return tValue;
 ValueIndex                   return tValueIndex;
 ValueName                    return tValueName;
+VTUFile                      return tVTUFile;
 
 WithArgument                 return tWithArgument;
 While                        return tWhile;

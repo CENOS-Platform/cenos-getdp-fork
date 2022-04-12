@@ -11,6 +11,7 @@
 #include "Get_DofOfElement.h"
 #include "Cal_Quantity.h"
 #include "Pos_Print.h"
+#include "Pos_PrintExternal.h"
 #include "Pos_Format.h"
 #include "ListUtils.h"
 #include "Message.h"
@@ -88,7 +89,8 @@ void Pos_FemFormulation(struct Formulation *Formulation_P,
   case POP_PRINT:
     switch(PostSubOperation_P->SubType) {
     case PRINT_ONREGION:
-      Pos_PrintOnRegion(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
+      Pos_PrintOnRegion(NCPQ_P, CPQ_P, Order,
+                        DefineQuantity_P0, // FIXME: frequency is set to zero
                         QuantityStorage_P0, PostSubOperation_P);
       break;
     case PRINT_ONELEMENTSOF:
@@ -123,6 +125,55 @@ void Pos_FemFormulation(struct Formulation *Formulation_P,
 
   default: Message::Error("Unknown PostSubOperation type"); break;
   }
+
+  List_Delete(QuantityStorage_L);
+}
+
+/* ------------------------------------------------------------------------ */
+/*  P o s _ F e m F o r m u l a t i o n _ M u l t i V a l                   */
+/* ------------------------------------------------------------------------ */
+
+void Pos_FemFormulation_MultipleFields(
+  struct Formulation *Formulation_P, struct PostProcessing *PostProcessing_P,
+  int Order, struct PostSubOperation *PostSubOperation_P)
+{
+  struct Element Element;
+  struct DefineQuantity *DefineQuantity_P0;
+  struct QuantityStorage *QuantityStorage_P0, QuantityStorage;
+
+  List_T *QuantityStorage_L;
+  int i;
+  Get_InitDofOfElement(&Element);
+
+  DefineQuantity_P0 =
+    (struct DefineQuantity *)List_Pointer(Formulation_P->DefineQuantity, 0);
+  QuantityStorage_L = List_Create(List_Nbr(Formulation_P->DefineQuantity), 1,
+                                  sizeof(struct QuantityStorage));
+
+  for(i = 0; i < List_Nbr(Formulation_P->DefineQuantity); i++) {
+    QuantityStorage.DefineQuantity = DefineQuantity_P0 + i;
+
+    if(QuantityStorage.DefineQuantity->Type == INTEGRALQUANTITY &&
+       QuantityStorage.DefineQuantity->IntegralQuantity.DefineQuantityIndexDof <
+         0) {
+      QuantityStorage.TypeQuantity = VECTOR; /* on ne sait pas... */
+    }
+    else {
+      QuantityStorage.TypeQuantity =
+        ((struct FunctionSpace *)List_Pointer(
+           Problem_S.FunctionSpace,
+           (DefineQuantity_P0 + i)->FunctionSpaceIndex))
+          ->Type;
+    }
+
+    QuantityStorage.NumLastElementForFunctionSpace = 0;
+    List_Add(QuantityStorage_L, &QuantityStorage);
+  }
+
+  QuantityStorage_P0 =
+    (struct QuantityStorage *)List_Pointer(QuantityStorage_L, 0);
+  Pos_PrintExternal(PostProcessing_P, Order, DefineQuantity_P0,
+                    QuantityStorage_P0, PostSubOperation_P);
 
   List_Delete(QuantityStorage_L);
 }
@@ -203,23 +254,26 @@ void Pos_InitAllSolutions(List_T *TimeStep_L, int Index_TimeStep)
   int TimeStepIndex, k, Num_Solution;
 
   List_Read(TimeStep_L, Index_TimeStep, &TimeStepIndex);
-
-  for(k = 0; k < Current.NbrSystem; k++)
+  for(k = 0; k < Current.NbrSystem; k++) {
     if((Num_Solution =
           std::min(List_Nbr((Current.DofData_P0 + k)->Solutions) - 1,
-                   TimeStepIndex)) >= 0)
+                   TimeStepIndex)) >= 0) {
       (Current.DofData_P0 + k)->CurrentSolution =
         (struct Solution *)List_Pointer((Current.DofData_P0 + k)->Solutions,
                                         Num_Solution);
+    }
+  }
 
   if(TimeStepIndex >= 0 &&
      TimeStepIndex < List_Nbr(Current.DofData->Solutions)) {
     Solution *Solution_P = ((struct Solution *)List_Pointer(
-      Current.DofData->Solutions, TimeStepIndex));
+      Current.DofData->Solutions,
+      TimeStepIndex)); // FIXME: freqency is set to zero
     Current.TimeStep = Solution_P->TimeStep;
     Current.Time = Solution_P->Time;
     Current.TimeImag = Solution_P->TimeImag;
-    Current.Frequency = Solution_P->Frequency;
+    // Current.Frequency = Solution_P->Frequency;//FIXME: freqency is set to
+    // zero
   }
   else { // Warning: this can be wrong
     Current.TimeStep = TimeStepIndex;
@@ -395,10 +449,12 @@ void Pos_Formulation(struct Formulation *Formulation_P,
     return;
   }
 
-  if(PostSubOperation_P->FileOut) {
+  // for POP_PRINTEXTERNAL file opening, closing, naming is done in
+  // PosPrintExternal
+  if(PostSubOperation_P->FileOut &&
+     PostSubOperation_P->Type != POP_PRINTEXTERNAL) {
     strcpy(PostFileName,
            Fix_RelativePath(PostSubOperation_P->FileOut, Name_Path).c_str());
-
     if(PostSubOperation_P->AppendExpressionToFileName >= 0) {
       struct Value Value;
       Get_ValueOfExpressionByIndex(
@@ -523,7 +579,15 @@ void Pos_Formulation(struct Formulation *Formulation_P,
 
   switch(Formulation_P->Type) {
   case FEMEQUATION:
-    Pos_FemFormulation(Formulation_P, NCPQ_P, CPQ_P, Order, PostSubOperation_P);
+    if(PostSubOperation_P->Type != POP_PRINTEXTERNAL) {
+      Pos_FemFormulation(Formulation_P, NCPQ_P, CPQ_P, Order,
+                         PostSubOperation_P);
+    }
+    else {
+      Pos_FemFormulation_MultipleFields(Formulation_P, PostProcessing_P, Order,
+                                        PostSubOperation_P);
+    }
+
     break;
 
   case GLOBALEQUATION: break;
@@ -535,7 +599,8 @@ void Pos_Formulation(struct Formulation *Formulation_P,
 
   Flag_GMSH_VERSION = oldVersion;
 
-  if(PostStream && PostSubOperation_P->FileOut) {
+  if(PostStream && PostSubOperation_P->FileOut &&
+     PostSubOperation_P->Type != POP_PRINTEXTERNAL) {
     fclose(PostStream);
 
     if(PostSubOperation_P->SendToServer == NULL ||
