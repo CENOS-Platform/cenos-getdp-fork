@@ -334,7 +334,7 @@ struct doubleXstring{
 %token      tOptimizerInitialize tOptimizerUpdate tOptimizerFinalize
 %token      tLanczos tEigenSolve tEigenSolveAndExpand tEigenSolveJac
 %token      tUpdate tUpdateConstraint tBreak tExit tGetResidual tCreateSolution
-%token      tEvaluate tSelectCorrection tAddCorrection tMultiplySolution
+%token      tEvaluate tSelectCorrection tAddCorrection tMultiplySolution tMultiplyConstraint
 %token      tAddOppositeFullSolution tSolveAgainWithOther tSetGlobalSolverOptions
 %token      tAddVector
 
@@ -5499,7 +5499,7 @@ OperationTerm :
       Operation_P->Case.AddCorrection.Alpha = $5 ;
     }
 
-  | tMultiplySolution '[' String__Index ',' FExpr ']' tEND
+  | tMultiplySolution '[' String__Index ',' Expression ']' tEND
     { Operation_P = (struct Operation*)
 	List_Pointer(Operation_L, List_Nbr(Operation_L)-1) ;
       Operation_P->Type = OPERATION_MULTIPLYSOLUTION;
