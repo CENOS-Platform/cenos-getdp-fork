@@ -1518,9 +1518,14 @@ struct EnsightCase {
   std::vector<char *> postNames;
   std::vector<int> valueTypes;
   std::vector<std::vector<double> > nodes_coordinates_all;
-  std::vector<double> time_values; // stores time_values fro .case file writting
+  std::vector<double> time_values; // stores time_values for .case file writting
   std::vector<elementsInPart>
     parts; // stores the parts for the current variable field
+  std::unordered_map<
+    char *,
+    std::unordered_map<int, std::unordered_map<int, std::vector<double> > > >
+    vars; // char is the name of the variable, first int is the part number,
+          // second int is the node, vector double is the data
 };
 
 struct PostOperation {

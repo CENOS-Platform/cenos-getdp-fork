@@ -14,8 +14,10 @@ EnsightExternalData::EnsightExternalData() {}
 
 EnsightExternalData::~EnsightExternalData() {}
 
-// Use always with LastTimeStep option!!!
-//Example 			PrintExternal[ PointData {<post-quantity-id>}, OnElementsOf Region[{ <group-id>}], File "<folder-id>",Format ENSIGHT ,LastTimeStepOnly];
+// Use always with LastTimeStep option!!! Only one <group-id> in each
+// PrintExternal
+// Example 			PrintExternal[ PointData {<post-quantity-id>}, OnElementsOf
+// Region[{ <group-id>}], File "<folder-id>",Format ENSIGHT ,LastTimeStepOnly];
 
 void EnsightExternalData::write(std::string filename)
 {
@@ -24,21 +26,19 @@ void EnsightExternalData::write(std::string filename)
   addGeometry(); // This has to be done before any WriteGeometry because it
                  // stores geo data of each Print. Needed for the General .geo
                  // file.
+  addVariable();
+
+  // uncomment to get the Ensight ASCII format. Usefull for debugging.
+  // writeGeometryASCII(filename);
+  // writeVariableASCII(filename);
+
   writeVariableBinary(filename);
   writeGeometryBinary(filename);
-  
-  //uncomment to get the Ensight ASCII format. Usefull for debugging. 
- /* writeVariableASCII(filename);
-  writeGeometryASCII(filename);*/
 
-  //< File "case" >  should be in posoperation line to write the case file.
-  //char charBuffer[512];
-  //snprintf(charBuffer, sizeof(charBuffer), "%s", "case");
-  //std::string current_filename = Fix_RelativePath(charBuffer, Name_Path);
-  //if(filename == current_filename) { writeCaseFile(); }
   writeCaseFile(filename);
 }
-void EnsightExternalData::addGeometry() {
+void EnsightExternalData::addGeometry()
+{
   // add geometries for global .geo file
   bool step_stored = false;
   for(auto step : Ensight_Case.time_values) {
@@ -60,7 +60,14 @@ void EnsightExternalData::addGeometry() {
     }
   }
 }
-  // binary
+void EnsightExternalData::addVariable()
+{
+  for(auto part_item : region_elements) {
+    Ensight_Case.vars[data_sets[0].point_data[0].name][part_item.first] =
+      data_sets[0].point_data[0].data;
+  }
+}
+// binary
 void EnsightExternalData::writeGeometryBinary(std::string fname)
 {
   FILE *fd = nullptr;
@@ -163,9 +170,9 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   bool binary = true;
   std::string current_filename;
   char charBuffer[512];
-  size_t last_time_step = 0;//Use always with LastTimeStep option!!!
+  size_t last_time_step = 0; // Use always with LastTimeStep option!!!
   int step_for_naming;
-    // ugly thing for counting freqStep
+  // ugly thing for counting freqStep
   if(data_sets[0].freq_value != 0) {
     step_for_naming = 0;
     for(auto step : Ensight_Case.time_values) {
@@ -178,31 +185,30 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
     step_for_naming = data_sets[0].time_step - 1;
   }
 
+  // UNCOMMENT THIS FOR DEBUGGING, THIS WRITES A .GEO FILE ONLY FOR THE CURRENT
+  // POSTOPERATION int step_for_naming;
 
-  //UNCOMMENT THIS FOR DEBUGGING, THIS WRITES A .GEO FILE ONLY FOR THE CURRENT POSTOPERATION
-  //int step_for_naming;
-
-  //snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d.geo", "resFile", 0,
+  // snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d.geo", "resFile", 0,
   //         step_for_naming);
-  //current_filename = Fix_RelativePath(charBuffer, Name_Path);
-  //current_filename = fname + charBuffer;
-  //if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
+  // current_filename = Fix_RelativePath(charBuffer, Name_Path);
+  // current_filename = fname + charBuffer;
+  // if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
   //  Message::Error("Unable to open file '%s', error %s",
   //                 current_filename.c_str(), strerror(errno));
   //  return;
   //}
 
-  //WriteStringToFile("C Binary", fd);
-  //WriteStringToFile("Written by GetDP", fd);
-  //WriteStringToFile("description line 1", fd);
-  //WriteStringToFile("node id given", fd);
-  //WriteStringToFile("element id given", fd);
+  // WriteStringToFile("C Binary", fd);
+  // WriteStringToFile("Written by GetDP", fd);
+  // WriteStringToFile("description line 1", fd);
+  // WriteStringToFile("node id given", fd);
+  // WriteStringToFile("element id given", fd);
 
-  //std::map<int, int> NodeIdToOrder;
-  //int node_count = 0; // nodes are named sequentially
-  //int node_offset = 0; // used for referencing nodes of elements
+  // std::map<int, int> NodeIdToOrder;
+  // int node_count = 0; // nodes are named sequentially
+  // int node_offset = 0; // used for referencing nodes of elements
 
-  //for(size_t i = 0; i < parts.size(); i++) {
+  // for(size_t i = 0; i < parts.size(); i++) {
   //  std::string namePart = "part_" + std::to_string(i);
 
   //  WriteStringToFile("part", fd);
@@ -249,12 +255,10 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   //  node_offset = node_count;
   //}
 
-
   // write values for variable file , i.e field file
 
   snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d_n.%s", "resFile", 0,
-           step_for_naming,
-           data_sets[last_time_step].point_data[0].name);
+           step_for_naming, data_sets[last_time_step].point_data[0].name);
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
   current_filename = fname + charBuffer;
   if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
@@ -263,28 +267,53 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
     return;
   }
 
-  WriteStringToFile(data_sets[last_time_step].point_data[0].name, fd);
-
-  for(size_t i = 0; i < parts.size(); i++) {
-    WriteStringToFile("part", fd);
-    WriteIntToFile(parts[i].part, fd);
-    WriteStringToFile("coordinates", fd);
-    size_t offset = (i == 0) ? 0 : parts[i - 1].nodes.size();
-
-    for(size_t iData = 0; iData < data_sets[last_time_step].point_data.size();
-        iData++) {
-      for(int iVal = 0;
-          iVal < data_sets[last_time_step].point_data[iData].data_size;
-          iVal++) {
-        for(size_t iPoint = offset; iPoint < (offset + parts[i].nodes.size());
-            iPoint++) { // node_map.size()
-
-          WriteFloatToFile(
-            data_sets[last_time_step].point_data[iData].data[iPoint][iVal], fd);
+  for(auto var : Ensight_Case.vars) {
+    if(var.first == data_sets[last_time_step].point_data[0].name) {
+      WriteStringToFile(var.first, fd); // variable name
+      for(auto part : var.second) {
+        WriteStringToFile("part", fd);
+        WriteIntToFile(part.first, fd);
+        WriteStringToFile("coordinates", fd);
+        size_t point_size = part.second.size();
+        size_t value_size = part.second[0].size();
+        for(size_t iVal = 0; iVal < value_size; iVal++) {
+          for(size_t iPoint = 0; iPoint < point_size; iPoint++) {
+            WriteFloatToFile(part.second[iPoint][iVal], fd);
+          }
         }
       }
     }
   }
+  fflush(fd);
+
+  // KEEP THIS AS A TEMPLATE IN CASE WE WANT TO INCLUDE MORE THAN ONE REGION FOR
+  // A VARIABLE
+  // 			PrintExternal[ PointData {afield}, OnElementsOf
+  // Region[{ind,wp,air}], File "..\rawresults\dan\", Format ENSIGHT
+  // ,LastTimeStepOnly];
+  // WriteStringToFile(data_sets[last_time_step].point_data[0].name, fd);
+  // for(size_t i = 0; i < parts.size(); i++) {
+  //  WriteStringToFile("part", fd);
+  //  WriteIntToFile(parts[i].part, fd);
+  //  WriteStringToFile("coordinates", fd);
+  //  size_t offset = (i == 0) ? 0 : parts[i - 1].nodes.size();
+
+  //  for(size_t iData = 0; iData < data_sets[last_time_step].point_data.size();
+  //      iData++) {
+  //    for(int iVal = 0;
+  //        iVal < data_sets[last_time_step].point_data[iData].data_size;
+  //        iVal++) {
+  //      for(size_t iPoint = offset; iPoint < (offset + parts[i].nodes.size());
+  //          iPoint++) { // node_map.size()
+
+  //        WriteFloatToFile(data_sets[last_time_step]
+  //                           .point_data[iData]
+  //                           .data[node_map[parts[i].nodes[iPoint]]][iVal],
+  //                         fd);
+  //      }
+  //    }
+  //  }
+  //}
   bool name_in_case = false;
   for(auto name : Ensight_Case.postNames) {
     if(name == data_sets[0].point_data[0].name) { name_in_case = true; }
@@ -293,8 +322,6 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
     Ensight_Case.postNames.push_back(data_sets[0].point_data[0].name);
     Ensight_Case.valueTypes.push_back(data_sets[0].point_data[0].value_type);
   }
-
- 
 }
 // ascii
 void EnsightExternalData::writeGeometryASCII(std::string fname)
@@ -398,7 +425,8 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
   char charBuffer[512];
   size_t last_time_step = 0;
   int step_for_naming;
-      // ugly thing for counting freqStep
+
+  // ugly thing for counting freqStep
   if(data_sets[0].freq_value != 0) {
     step_for_naming = 0;
     for(auto step : Ensight_Case.time_values) {
@@ -415,26 +443,27 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
 
   // UNCOMMENT THIS FOR DEBUGGING, THIS WRITES A .GEO FILE ONLY FOR THE CURRENT
   // POSTOPERATION
-  
-  //snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d.geoASCII", "resFile", 0,
+
+  // snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d.geoASCII", "resFile",
+  // 0,
   //         data_sets[0].time_step - 1); // last time step data_sets.size()
-  //current_filename = Fix_RelativePath(charBuffer, Name_Path);
-  //current_filename = fname + charBuffer;
-  //if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
+  // current_filename = Fix_RelativePath(charBuffer, Name_Path);
+  // current_filename = fname + charBuffer;
+  // if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
   //  Message::Error("Unable to open file '%s', error %s",
   //                 current_filename.c_str(), strerror(errno));
   //  return;
   //}
 
-  //fprintf(fd, "Written by GetDP Ensight writer\n");
-  //fprintf(fd, "No title specified\n");
-  //fprintf(fd, "node id given\n");
-  //fprintf(fd, "element id given\n");
+  // fprintf(fd, "Written by GetDP Ensight writer\n");
+  // fprintf(fd, "No title specified\n");
+  // fprintf(fd, "node id given\n");
+  // fprintf(fd, "element id given\n");
 
-  //std::map<int, int> NodeIdToOrder;
-  //int node_count = 0; // nodes are named sequentially in the same geo file
-  //int node_offset = 0; // used for referencing nodes of elements
-  //for(size_t i = 0; i < parts.size(); i++) {
+  // std::map<int, int> NodeIdToOrder;
+  // int node_count = 0; // nodes are named sequentially in the same geo file
+  // int node_offset = 0; // used for referencing nodes of elements
+  // for(size_t i = 0; i < parts.size(); i++) {
   //  fprintf(fd, "part\n");
   //  fprintf(fd, "%d\n", parts[i].part);
   //  fprintf(fd, "coordinates\n");
@@ -486,38 +515,86 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
 
   // write values for variable file , i.e field file
 
-  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05lld_n.%sASCII", "resFile",
-           0, last_time_step, data_sets[last_time_step].point_data[0].name);
+  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d_n.%sASCII", "resFile", 0,
+           step_for_naming, data_sets[last_time_step].point_data[0].name);
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
   current_filename = fname + charBuffer;
+
   if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
     Message::Error("Unable to open file '%s', error %s",
                    current_filename.c_str(), strerror(errno));
     return;
   }
-  fprintf(fd, data_sets[last_time_step].point_data[0].name);
-  fprintf(fd, "\n");
-  for(size_t i = 0; i < parts.size(); i++) {
-    fprintf(fd, "part\n");
-    fprintf(fd, "%d\n", parts[i].part);
-    fprintf(fd, "coordinates\n");
-    size_t offset = (i == 0) ? 0 : parts[i - 1].nodes.size();
 
-    for(size_t iData = 0; iData < data_sets[last_time_step].point_data.size();
-        iData++) {
-      for(auto kv : data_sets[last_time_step].point_data[iData].data) {}
-      for(int iVal = 0;
-          iVal < data_sets[last_time_step].point_data[iData].data_size;
-          iVal++) {
-        for(size_t iPoint = offset; iPoint < (offset + parts[i].nodes.size());
-            iPoint++) { // node_map.size()
-          fprintf(
-            fd, "%.10e\n",
-            data_sets[last_time_step].point_data[iData].data[iPoint][iVal]);
+  /*fprintf(fd, data_sets[last_time_step].point_data[0].name);
+  fprintf(fd, "\n");*/
+
+  for(auto var : Ensight_Case.vars) {
+    fprintf(fd, var.first); // variable name
+    fprintf(fd, "\n");
+    for(auto part : var.second) {
+      Message::Info("part.first %d", part.first);
+      fprintf(fd, "part\n");
+      fprintf(fd, "%d \n", part.first);
+      fprintf(fd, "coordinates\n");
+      size_t point_size = part.second.size();
+      size_t value_size = part.second[0].size();
+      for(size_t iVal = 0; iVal < value_size; iVal++) {
+        for(size_t iPoint = 0; iPoint < point_size; iPoint++) {
+          // auto point_data = part.second[iPoint][iVal];
+          fprintf(fd, "%.10e\n", part.second[iPoint][iVal]);
         }
       }
     }
   }
+  fflush(fd);
+
+  // KEEP THIS AS A TEMPLATE IN CASE WE WANT TO INCLUDE MORE THAN ONE REGION FOR
+  // A VARIABLE
+  // 			PrintExternal[ PointData {afield},
+  // OnElementsOfRegion[{ind,wp,air}], File "..\rawresults\dan\", Format ENSIGHT
+  // ,LastTimeStepOnly]; for(size_t i = 0; i < parts.size(); i++) {
+  //  fprintf(fd, "part\n");
+  //  fprintf(fd, "%d\n", parts[i].part);
+  //  fprintf(fd, "coordinates\n");
+  //
+
+  //  size_t offset = (i == 0) ? 0 : parts[i - 1].nodes.size();
+  //  for(size_t iData = 0; iData < data_sets[last_time_step].point_data.size();
+  //      iData++) {
+  //    //fprintf(fd, "OLD\n");
+  //    for(int iVal = 0;
+  //        iVal < data_sets[last_time_step].point_data[iData].data_size;
+  //        iVal++) {
+  //      for(size_t iPoint = 0; iPoint < data_sets[last_time_step]
+  //                                        .point_data[iData]
+  //                                        .data_region[parts[i].part]
+  //                                        .size();
+  //          iPoint++) {
+  //         fprintf(fd, "%.10e\n", //"%.10e\n"
+  //                data_sets[last_time_step]
+  //                  .point_data[iData]
+  //                  .data[node_map[parts[i].nodes[iPoint]]][iVal]);
+  //        //try {
+  //        //  fprintf(fd, "%.10e \n", //"%.10e\n"
+  //        //          data_sets[last_time_step]
+  //        //            .point_data[iData]
+  //        //            .data_region[parts[i].part][iPoint]
+  //        //            .at(iVal));
+  //        //} catch(const std::exception &ex) {
+  //        //  Message::Info("iPoint %lld", iPoint);
+  //        // Message::Info("data_sets[last_time_step].point_data[iData].data_"
+  //        //                "region[parts[i].part][iPoint].size() %lld",
+  //        //                data_sets[last_time_step]
+  //        //                  .point_data[iData]
+  //        //                  .data_region[parts[i].part][iPoint]
+  //        //                  .size());
+  //        //  Message::Info(ex.what());
+  //        //}
+  //      }
+  //    }
+  //  }
+  //}
 }
 // write .case file
 void EnsightExternalData::writeCaseFile(std::string fname)
@@ -526,8 +603,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
   std::string current_filename;
   char charBuffer[512];
 
-  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%s",  "resFile", 0,
-           "case");
+  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%s", "resFile", 0, "case");
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
 
   current_filename = fname + charBuffer;
