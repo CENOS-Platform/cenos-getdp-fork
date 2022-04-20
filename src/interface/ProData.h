@@ -11,6 +11,7 @@
 #include <vector>
 #include "GetDPConfig.h"
 #include "ListUtils.h"
+#include <unordered_map>
 
 #define DIM_0D 0
 #define DIM_1D 1
