@@ -27,11 +27,11 @@ void PointDataSet::setValueType(int vt)
   }
 }
 
-void PointDataSet::addData(int i, std::vector<double> d)
+void PointDataSet::addData(int i, std::vector<double> d) { data[i] = d; }
+void PointDataSet::addDataRegion(int i, std::vector<double> d, int region)
 {
-  data[i] = d;
+  data_region[region][i] = d;
 }
-
 // Class PostExternalData definition
 
 PostExternalData::PostExternalData() {}
