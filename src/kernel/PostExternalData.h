@@ -61,3 +61,9 @@ public:
 
   virtual void write(std::string fname) = 0;
 };
+struct xyzv {
+  double x, y, z;
+  struct Value v;
+  /*int nbvals; for time domain -> malloc Value *v... */
+  int nboccurences;
+};
