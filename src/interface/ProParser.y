@@ -7491,6 +7491,7 @@ PostSubOperation :
 	  PostSubOperation_S.PostQuantityIndex[0] = 0;
 	  PostSubOperation_S.PointQuantities = $4;
       PostSubOperation_S.Case.OnRegion.RegionIndex = Num_Group(&Group_S, strSave("PO_OnElementsOf"), $7);
+
 	  
 	  //PostSubOperation_ExternalFormat
     }
@@ -8202,6 +8203,14 @@ PrintExternalOption :
   | ',' tBinary
     {
       PostSubOperation_S.Binary = 1;
+    }
+  | ',' tSmoothing
+    {
+      PostSubOperation_S.Smoothing = 1;
+    }
+  | ',' tSmoothing FExpr
+    {
+      PostSubOperation_S.Smoothing = (int)$3;
     }
  ;
 
