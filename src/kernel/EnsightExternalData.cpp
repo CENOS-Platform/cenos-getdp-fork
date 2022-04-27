@@ -533,7 +533,6 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
     fprintf(fd, var.first); // variable name
     fprintf(fd, "\n");
     for(auto part : var.second) {
-      Message::Info("part.first %d", part.first);
       fprintf(fd, "part\n");
       fprintf(fd, "%d \n", part.first);
       fprintf(fd, "coordinates\n");
