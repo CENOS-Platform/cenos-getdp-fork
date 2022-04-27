@@ -1508,6 +1508,7 @@ struct PostExternalElementCopy {
 }; // dummy copy of PostExternalElement
 struct elementsInPart {
   int part;
+  std::string groupName;
   std::vector<PostExternalElementCopy> elements;
   std::vector<int> nodes;
   std::vector<std::vector<double> > nodes_coordinates;
@@ -1572,6 +1573,7 @@ struct PostSubOperation {
   double Target;
   char *ValueName, *Label;
   char *FileOut;
+  char *PartName;
   List_T *TimeStep_L, *Value_L, *Iso_L, *Frequency_L;
   List_T *TimeValue_L, *TimeImagValue_L;
   int TimeInterval_Flag;
