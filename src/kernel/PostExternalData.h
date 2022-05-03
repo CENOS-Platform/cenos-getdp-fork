@@ -13,6 +13,7 @@ public:
   void addData(int i, std::vector<double> d);
   void addDataRegion(int i, std::vector<double> d, int region);
   char *name;
+  char *groupName;
   int value_type;
   int data_size;
 
