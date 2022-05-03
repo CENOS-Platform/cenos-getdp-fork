@@ -1528,6 +1528,7 @@ struct EnsightCase {
     std::unordered_map<int, std::unordered_map<int, std::vector<double> > > >
     vars; // char is the name of the variable, first int is the part number,
           // second int is the node, vector double is the data
+  std::unordered_map<int, char *> region_name_map;
 };
 
 struct PostOperation {

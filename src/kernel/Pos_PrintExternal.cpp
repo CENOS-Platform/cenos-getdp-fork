@@ -114,6 +114,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
         PostProcessing_P->PostQuantity,
         *(int *)List_Pointer(PSO_P->PointQuantities, ipq));
       PointDataSet pd_set(PostQuantity_P->Name);
+      pd_set.groupName = Group_P->Name;
       int NbrGeo = Geo_GetNbrGeoElements();
       List_T *PostElement_L =
         List_Create(Store ? NbrGeo / 10 : 10, Store ? NbrGeo / 10 : 10,
@@ -156,16 +157,18 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
           pd_set.addDataRegion(post_data->node_map[PE->NumNodes[iNode]],
                                data_point, Element.GeoElement->Region);
         }
-        if(!PSO_P->Smoothing) { Destroy_PostElement(PE); }//Do not destroy elements if you are going to SMOOTH the data
+        if(!PSO_P->Smoothing) {
+          Destroy_PostElement(PE);
+        } // Do not destroy elements if you are going to SMOOTH the data
       }
 
-      /* Perform Smoothing */   // Smoothing taken from Pos_Print
+      /* Perform Smoothing */ // Smoothing taken from Pos_Print
 
       if(PSO_P->Smoothing) {
         Tree_T *xyzv_T;
         double x1, x2;
         struct xyzv xyzv, *xyzv_P;
-   
+
         xyzv_T = Tree_Create(sizeof(struct xyzv), fcmp_xyzv);
         Message::Info("Smoothing (phase 1)");
         for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {

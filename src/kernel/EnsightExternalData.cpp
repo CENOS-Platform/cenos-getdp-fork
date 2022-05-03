@@ -61,11 +61,17 @@ void EnsightExternalData::addGeometry()
   }
 }
 void EnsightExternalData::addVariable()
-{
+{  
+//all done in Ensight_Case to store information after each Print_External
   for(auto part_item : region_elements) {
     Ensight_Case.vars[data_sets[0].point_data[0].name][part_item.first] =
       data_sets[0].point_data[0].data;
+
+    Ensight_Case.region_name_map[part_item.first] =
+      data_sets[0].point_data[0].groupName;//this maps the name to the int asociated for this name
   }
+  
+
 }
 // binary
 void EnsightExternalData::writeGeometryBinary(std::string fname)
@@ -115,7 +121,9 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
 
     WriteStringToFile("part", fd);
     WriteIntToFile(Ensight_Case.parts[i].part, fd);
-    WriteStringToFile(namePart.c_str(), fd);
+    //WriteStringToFile(namePart.c_str(), fd);
+    WriteStringToFile(Ensight_Case.region_name_map[Ensight_Case.parts[i].part],
+                      fd);
     WriteStringToFile("coordinates", fd);
     WriteIntToFile(Ensight_Case.parts[i].nodes.size(), fd);
 

@@ -428,6 +428,7 @@ Sinh                         return tSinh;
 Skin                         return tSkin;
 Sleep                        return tSleep;
 Smoothing                    return tSmoothing;
+PartName                     return tPartName;
 SolidAngle                   return tSolidAngle;
 SolveAgainWithOther          return tSolveAgainWithOther;
 SolveJac_AdaptRelax          return tSolveJac_AdaptRelax;

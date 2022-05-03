@@ -358,7 +358,7 @@ struct doubleXstring{
 %token        tFile tDepth tDimension tComma tTimeStep tHarmonicToTime
 %token        tCosineTransform tTimeToHarmonic
 %token        tValueIndex tValueName
-%token        tFormat tHeader tFooter tSkin tSmoothing
+%token        tFormat tHeader tFooter tSkin tSmoothing tPartName
 %token        tTarget tSort tIso tNoNewLine tNoTitle tDecomposeInSimplex tChangeOfValues
 %token        tTimeLegend tFrequencyLegend tEigenvalueLegend
 %token        tStoreInRegister tStoreInVariable
