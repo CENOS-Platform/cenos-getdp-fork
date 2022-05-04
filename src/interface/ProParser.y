@@ -8373,6 +8373,10 @@ PrintExternalOption :
     {
       PostSubOperation_S.Smoothing = (int)$3;
     }
+  | ',' tPartName  CharExpr
+    {
+      PostSubOperation_S.PartName = $3;
+    }
  ;
 
 /* ------------------------------------------------------------------------ */

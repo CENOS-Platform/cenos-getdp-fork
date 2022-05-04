@@ -62,8 +62,6 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     return;
   }
 
-
-
   if(PSO_P->Binary == 1)
     post_data->wtype = PostExternalData::WriteType::BINARY;
   else
@@ -75,7 +73,6 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
   List_T *Region_L = Group_P->InitialList;
   struct Element Element;
   Get_InitDofOfElement(&Element);
-
 
   /* Create the list of PostElements */
 
@@ -114,7 +111,14 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
         PostProcessing_P->PostQuantity,
         *(int *)List_Pointer(PSO_P->PointQuantities, ipq));
       PointDataSet pd_set(PostQuantity_P->Name);
-      pd_set.groupName = Group_P->Name;
+
+      pd_set.groupName =
+        (PSO_P->PartName != NULL) ?
+          PSO_P->PartName :
+          Group_P->Name; // gives as default name the one defined in Group,
+                         // optional name the one defined in PrintExternal with
+                         // option: PartName "include_your_name"
+
       int NbrGeo = Geo_GetNbrGeoElements();
       List_T *PostElement_L =
         List_Create(Store ? NbrGeo / 10 : 10, Store ? NbrGeo / 10 : 10,
