@@ -170,6 +170,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
     }
     node_offset = node_count;
   }
+  fclose(fd);
 }
 // binary
 void EnsightExternalData::writeVariableBinary(std::string fname)
@@ -330,6 +331,7 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
     Ensight_Case.postNames.push_back(data_sets[0].point_data[0].name);
     Ensight_Case.valueTypes.push_back(data_sets[0].point_data[0].value_type);
   }
+  fclose(fd);
 }
 // ascii
 void EnsightExternalData::writeGeometryASCII(std::string fname)
@@ -423,6 +425,7 @@ void EnsightExternalData::writeGeometryASCII(std::string fname)
     }
     node_offset = node_count;
   }
+  fclose(fd);
 }
 // ascii
 void EnsightExternalData::writeVariableASCII(std::string fname)
@@ -602,6 +605,7 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
   //    }
   //  }
   //}
+  fclose(fd);
 }
 // write .case file
 void EnsightExternalData::writeCaseFile(std::string fname)
@@ -639,6 +643,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
       time_step++) {
     fprintf(fd, "%f ", Ensight_Case.time_values[time_step]);
   }
+  fclose(fd);
 }
 
 void EnsightExternalData::groupParts()
