@@ -58,7 +58,7 @@ public:
   PostExternalData();
   virtual ~PostExternalData();
 
-  void addElement(PostElement *PE);
+  void addElement(PostElement *PE, int region_nr);
 
   virtual void write(std::string fname) = 0;
 };
