@@ -80,10 +80,5 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
   elementCopy.type = post_el.type;
   elements_in_region[post_el.region].push_back(elementCopy);
   // deep copy nodes of each element
-  for(auto node : post_el.nodes) {
-    if(!node_map_region.count(post_el.region)) { 
-      node_map_region[post_el.region] = std::vector<int>();
-    }
-    node_map_region[post_el.region].push_back(node);
-  }
+  node_map_region[post_el.region].insert(post_el.nodes.begin(), post_el.nodes.end());
 }
