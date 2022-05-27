@@ -80,5 +80,13 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
   elementCopy.type = post_el.type;
   elements_in_region[post_el.region].push_back(elementCopy);
   // deep copy nodes of each element
-  node_map_region[post_el.region].insert(post_el.nodes.begin(), post_el.nodes.end());
+  
+  auto &node_set = node_set_region[post_el.region];
+  auto &node_vector = node_map_region[post_el.region];
+  for (int id : post_el.nodes) {
+    if (!node_set.count(id)) {
+	  node_set.insert(id);
+	  node_map.push_back(id);
+	}
+  }
 }

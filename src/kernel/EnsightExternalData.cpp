@@ -716,7 +716,7 @@ void EnsightExternalData::groupParts()
 
 	// Copy node IDs for region from PostExternalData::node_map_region[region_id] unordered_set.
 	auto &regionNodes = node_map_region[elementPart.part];
-	elementPart.nodes.insert(elementPart.nodes.begin(), regionNodes.begin(), regionNodes.end());
+	elementPart.nodes.insert(elementPart.nodes.end(), regionNodes.begin(), regionNodes.end());
 
     auto t1_4 = high_resolution_clock::now();
     ms_groupParts_subLoop_New = t1_4 - t1_3;
