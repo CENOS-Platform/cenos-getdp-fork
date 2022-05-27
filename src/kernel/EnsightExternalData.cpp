@@ -5,7 +5,9 @@
 #include "OS.h"
 #include <cstring>
 #include <algorithm>
+#include <unordered_set>
 
+#include <chrono>
 extern char *Name_Path;
 
 extern struct EnsightCase Ensight_Case;
@@ -18,24 +20,51 @@ EnsightExternalData::~EnsightExternalData() {}
 // PrintExternal
 // Example 			PrintExternal[ PointData {<post-quantity-id>}, OnElementsOf
 // Region[{ <group-id>}], File "<folder-id>",Format ENSIGHT ,LastTimeStepOnly];
+using std::chrono::duration;
+using std::chrono::duration_cast;
+using std::chrono::high_resolution_clock;
+using std::chrono::milliseconds;
 
 void EnsightExternalData::write(std::string filename)
 {
+  auto t1 = high_resolution_clock::now();
   groupParts();
+  auto t2 = high_resolution_clock::now();
   for(size_t i = 0; i < parts.size(); i++) { groupElementTypes(parts[i]); }
+  auto t3 = high_resolution_clock::now();
   addGeometry(); // This has to be done before any WriteGeometry because it
                  // stores geo data of each Print. Needed for the General .geo
                  // file.
+  auto t4 = high_resolution_clock::now();
   addVariable();
-
+  auto t5 = high_resolution_clock::now();
   // uncomment to get the Ensight ASCII format. Usefull for debugging.
   // writeGeometryASCII(filename);
   // writeVariableASCII(filename);
 
   writeVariableBinary(filename);
+  auto t6 = high_resolution_clock::now();
   writeGeometryBinary(filename);
+  auto t7 = high_resolution_clock::now();
 
   writeCaseFile(filename);
+  auto t8 = high_resolution_clock::now();
+
+  duration<double, std::milli> ms_groupParts = t2 - t1;
+  duration<double, std::milli> ms_groupElementTypes = t3 - t2;
+  duration<double, std::milli> ms_addGeometry = t4 - t3;
+  duration<double, std::milli> ms_addVariable = t5 - t4;
+  duration<double, std::milli> ms_writeVariableBinary = t6 - t5;
+  duration<double, std::milli> ms_writeGeometryBinary = t7 - t6;
+  duration<double, std::milli> ms_writeCaseFile = t8 - t7;
+
+  Message::Info("ms_groupParts = %f", ms_groupParts);
+  Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
+  Message::Info("ms_addGeometry = %f", ms_addGeometry);
+  Message::Info("ms_addVariable = %f", ms_addVariable);
+  Message::Info("ms_writeVariableBinary = %f", ms_writeVariableBinary);
+  Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
+  Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);
 }
 void EnsightExternalData::addGeometry()
 {
@@ -61,17 +90,17 @@ void EnsightExternalData::addGeometry()
   }
 }
 void EnsightExternalData::addVariable()
-{  
-//all done in Ensight_Case to store information after each Print_External
+{
+  // all done in Ensight_Case to store information after each Print_External
   for(auto part_item : region_elements) {
     Ensight_Case.vars[data_sets[0].point_data[0].name][part_item.first] =
       data_sets[0].point_data[0].data;
 
     Ensight_Case.region_name_map[part_item.first] =
-      data_sets[0].point_data[0].groupName;//this maps the name to the int asociated for this name
+      data_sets[0]
+        .point_data[0]
+        .groupName; // this maps the name to the int asociated for this name
   }
-  
-
 }
 // binary
 void EnsightExternalData::writeGeometryBinary(std::string fname)
@@ -121,7 +150,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
 
     WriteStringToFile("part", fd);
     WriteIntToFile(Ensight_Case.parts[i].part, fd);
-    //WriteStringToFile(namePart.c_str(), fd);
+    // WriteStringToFile(namePart.c_str(), fd);
     WriteStringToFile(Ensight_Case.region_name_map[Ensight_Case.parts[i].part],
                       fd);
     WriteStringToFile("coordinates", fd);
@@ -648,27 +677,60 @@ void EnsightExternalData::writeCaseFile(std::string fname)
 
 void EnsightExternalData::groupParts()
 {
+  duration<double, std::milli> ms_groupParts_subLoop, ms_groupParts_subLoop_New;
   for(auto part_item : region_elements) {
-    elementsInPart elementPart;
-    elementPart.part = part_item.first;
-    for(auto el_index : part_item.second) {
-      PostExternalElementCopy elementCopy;
-      elementCopy.index = elements[el_index].index;
-      elementCopy.nodes = elements[el_index].nodes;
-      elementCopy.nodes_coordinates = elements[el_index].nodes_coordinates;
-      elementCopy.region = elements[el_index].region;
-      elementCopy.type = elements[el_index].type;
-
-      elementPart.nodes_coordinates = node_coordinates;
-      elementPart.elements.push_back(elementCopy);
-      for(auto n : elements[el_index].nodes) {
+    elementsInPart
+      elementPart; // create a elementPart that will store information about
+                   // type of elements in type_el_Part
+    elementPart.part = part_item.first; // part_item.first is the region
+    auto t1_1 = high_resolution_clock::now();
+    // loop over all elements in that region
+    //for(auto el_index : part_item.second) {
+    //  PostExternalElementCopy elementCopy;
+    //  // elements contains all elements and we deep copy only elements on this
+    //  // region
+    //  elementCopy.index = elements[el_index].index;
+    //  elementCopy.nodes = elements[el_index].nodes;
+    //  // elementCopy.nodes_coordinates = elements[el_index].nodes_coordinates;
+    //  elementCopy.region = elements[el_index].region;
+    //  elementCopy.type = elements[el_index].type;
+    //  elementPart.nodes_coordinates = node_coordinates;
+    //  //
+    //  // elementPart.elements.push_back(elementCopy);//old one working
+    //  // elementPart.elements = elements_in_region[part_item.first];
+    //  // loop over all nodes for each element in that region
+    //  for(auto n : elements[el_index].nodes) {
+    //    // if the node is not is already pushed then push it
+    //    if(std::find(elementPart.nodes.begin(), elementPart.nodes.end(), n) ==
+    //       elementPart.nodes.end()) {
+    //      elementPart.nodes.push_back(n);
+    //    }
+    //  }
+    //}
+    auto t1_2 = high_resolution_clock::now();
+    ms_groupParts_subLoop = t1_2 - t1_1;
+    //
+    auto t1_3 = high_resolution_clock::now();
+    elementPart.elements = elements_in_region[part_item.first];
+    elementPart.nodes_coordinates = node_coordinates;
+    //we have already loop over these elements in PostExternalData.cpp so we could just get the information from there
+    for(auto el_index : elementPart.elements) {
+      for(auto n : el_index.nodes) {
+        // if the node is not is already pushed then push it
         if(std::find(elementPart.nodes.begin(), elementPart.nodes.end(), n) ==
            elementPart.nodes.end()) {
           elementPart.nodes.push_back(n);
         }
       }
     }
+    //elementPart.nodes = node_map_region[part_item.first]; //This does not work properly
+    auto t1_4 = high_resolution_clock::now();
+    ms_groupParts_subLoop_New = t1_4 - t1_3;
+
+    Message::Info("ms_groupParts_subLoop = %f", ms_groupParts_subLoop);
+    Message::Info("ms_groupParts_subLoop_New = %f", ms_groupParts_subLoop_New);
     parts.push_back(elementPart);
+
     bool is_new_part = true;
     for(size_t j = 0; j < Ensight_Case.parts.size(); j++) {
       if(elementPart.part == Ensight_Case.parts[j].part) {

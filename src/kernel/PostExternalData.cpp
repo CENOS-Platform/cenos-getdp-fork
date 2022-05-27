@@ -50,22 +50,40 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
   PostExternalElement post_el;
   post_el.type = e.Type;
   post_el.index = PE->Index;
-  post_el.region = region_nr; //e.GeoElement->ElementaryRegion;
+  post_el.region = region_nr; // e.GeoElement->ElementaryRegion;
 
   for(int iNode = 0; iNode < e.GeoElement->NbrNodes; iNode++) {
     if(node_map.count(PE->NumNodes[iNode]) == 0) {
       node_map[PE->NumNodes[iNode]] = node_map.size();
       node_coordinates.push_back(
         std::vector<double>({PE->x[iNode], PE->y[iNode], PE->z[iNode]}));
+      
     }
     post_el.nodes.push_back(node_map[PE->NumNodes[iNode]]);
     post_el.nodes_coordinates.push_back(
       std::vector<double>({PE->x[iNode], PE->y[iNode], PE->z[iNode]}));
+
+    // node_map_region[post_el.region] = node_map[PE->NumNodes[iNode]];
   }
+
   if(!region_elements.count(post_el.region)) {
     region_elements[post_el.region] = std::vector<int>();
   }
   region_elements[post_el.region].push_back(elements.size());
 
   elements.push_back(post_el);
+  // deep copy of post_el
+  PostExternalElementCopy elementCopy;
+  elementCopy.index = post_el.index;
+  elementCopy.nodes = post_el.nodes;
+  elementCopy.region = post_el.region;
+  elementCopy.type = post_el.type;
+  elements_in_region[post_el.region].push_back(elementCopy);
+  // deep copy nodes of each element
+  for(auto node : post_el.nodes) {
+    if(!node_map_region.count(post_el.region)) { 
+      node_map_region[post_el.region] = std::vector<int>();
+    }
+    node_map_region[post_el.region].push_back(node);
+  }
 }
