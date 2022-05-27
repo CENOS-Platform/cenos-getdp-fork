@@ -86,7 +86,7 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
   for (int id : post_el.nodes) {
     if (!node_set.count(id)) {
 	  node_set.insert(id);
-	  node_map.push_back(id);
+	  node_vector.push_back(id);
 	}
   }
 }
