@@ -38,7 +38,7 @@ PostExternalData::PostExternalData() {}
 
 PostExternalData::~PostExternalData() {}
 
-void PostExternalData::addElement(PostElement *PE)
+void PostExternalData::addElement(PostElement *PE, int region_nr)
 {
   struct Element e;
   e.GeoElement = Geo_GetGeoElement(PE->Index);
@@ -50,7 +50,7 @@ void PostExternalData::addElement(PostElement *PE)
   PostExternalElement post_el;
   post_el.type = e.Type;
   post_el.index = PE->Index;
-  post_el.region = e.GeoElement->ElementaryRegion;
+  post_el.region = region_nr; //e.GeoElement->ElementaryRegion;
 
   for(int iNode = 0; iNode < e.GeoElement->NbrNodes; iNode++) {
     if(node_map.count(PE->NumNodes[iNode]) == 0) {

@@ -91,7 +91,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
       struct PostElement *PE =
         *(struct PostElement **)List_Pointer(PostElement_L, iPost);
-      post_data->addElement(PE);
+      post_data->addElement(PE, Group_P->Num);
       Destroy_PostElement(PE);
     }
   }
@@ -159,7 +159,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
             PE->Value[iNode].Val, PE->Value[iNode].Val + pd_set.data_size);
           pd_set.addData(post_data->node_map[PE->NumNodes[iNode]], data_point);
           pd_set.addDataRegion(post_data->node_map[PE->NumNodes[iNode]],
-                               data_point, Element.GeoElement->Region);
+                               data_point, Group_P->Num);
         }
         if(!PSO_P->Smoothing) {
           Destroy_PostElement(PE);
