@@ -713,17 +713,11 @@ void EnsightExternalData::groupParts()
     auto t1_3 = high_resolution_clock::now();
     elementPart.elements = elements_in_region[part_item.first];
     elementPart.nodes_coordinates = node_coordinates;
-    //we have already loop over these elements in PostExternalData.cpp so we could just get the information from there
-    for(auto el_index : elementPart.elements) {
-      for(auto n : el_index.nodes) {
-        // if the node is not is already pushed then push it
-        if(std::find(elementPart.nodes.begin(), elementPart.nodes.end(), n) ==
-           elementPart.nodes.end()) {
-          elementPart.nodes.push_back(n);
-        }
-      }
-    }
-    //elementPart.nodes = node_map_region[part_item.first]; //This does not work properly
+
+	// Copy node IDs for region from PostExternalData::node_map_region[region_id] unordered_set.
+	auto &regionNodes = node_map_region[elementPart.part];
+	elementPart.nodes.insert(elementPart.nodes.begin(), regionNodes.begin(), regionNodes.end());
+
     auto t1_4 = high_resolution_clock::now();
     ms_groupParts_subLoop_New = t1_4 - t1_3;
 

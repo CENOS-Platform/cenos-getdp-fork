@@ -5,6 +5,7 @@
 #include "Pos_Element.h"
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 
 class PointDataSet {
 public:
@@ -46,10 +47,10 @@ public:
 
   // unordered map showed about 15% better performance in tests than map
   std::unordered_map<int, int> node_map; // map to store new node ids
-  std::unordered_map<int, std::vector<int> >
+  std::unordered_map<int, std::unordered_set<int> >
     node_map_region; // map to store new node ids for each region, first int is region, second int is node
   std::vector<std::vector<double> > node_coordinates;
-  std::map<int, std::vector<int> >
+  std::unordered_map<int, std::vector<int> >
     region_elements; // int is a region, vector<int> is id for elements in this region
 
   std::vector<TimeStepData> data_sets;
