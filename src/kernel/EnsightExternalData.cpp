@@ -670,7 +670,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
   fprintf(fd, "time values:\n");
   for(size_t time_step = 0; time_step < Ensight_Case.time_values.size();
       time_step++) {
-    fprintf(fd, "%f ", Ensight_Case.time_values[time_step]);
+    fprintf(fd, "%f\n", Ensight_Case.time_values[time_step]);
   }
   fclose(fd);
 }
