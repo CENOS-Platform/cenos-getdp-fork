@@ -58,13 +58,13 @@ void EnsightExternalData::write(std::string filename)
   duration<double, std::milli> ms_writeGeometryBinary = t7 - t6;
   duration<double, std::milli> ms_writeCaseFile = t8 - t7;
 
-  Message::Info("ms_groupParts = %f", ms_groupParts);
-  Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
-  Message::Info("ms_addGeometry = %f", ms_addGeometry);
-  Message::Info("ms_addVariable = %f", ms_addVariable);
-  Message::Info("ms_writeVariableBinary = %f", ms_writeVariableBinary);
-  Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
-  Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);
+  //Message::Info("ms_groupParts = %f", ms_groupParts);
+  //Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
+  //Message::Info("ms_addGeometry = %f", ms_addGeometry);
+  //Message::Info("ms_addVariable = %f", ms_addVariable);
+  //Message::Info("ms_writeVariableBinary = %f", ms_writeVariableBinary);
+  //Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
+  //Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);
 }
 void EnsightExternalData::addGeometry()
 {
@@ -670,7 +670,8 @@ void EnsightExternalData::writeCaseFile(std::string fname)
   fprintf(fd, "time values:\n");
   for(size_t time_step = 0; time_step < Ensight_Case.time_values.size();
       time_step++) {
-    fprintf(fd, "%f\n", Ensight_Case.time_values[time_step]);
+    double time_step_aux = Ensight_Case.time_values[time_step];
+    fprintf(fd, "%lf\n", time_step_aux);
   }
   fclose(fd);
 }
@@ -721,8 +722,8 @@ void EnsightExternalData::groupParts()
     auto t1_4 = high_resolution_clock::now();
     ms_groupParts_subLoop_New = t1_4 - t1_3;
 
-    Message::Info("ms_groupParts_subLoop = %f", ms_groupParts_subLoop);
-    Message::Info("ms_groupParts_subLoop_New = %f", ms_groupParts_subLoop_New);
+    //Message::Info("ms_groupParts_subLoop = %f", ms_groupParts_subLoop);
+    //Message::Info("ms_groupParts_subLoop_New = %f", ms_groupParts_subLoop_New);
     parts.push_back(elementPart);
 
     bool is_new_part = true;

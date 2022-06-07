@@ -104,14 +104,25 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     TimeStepData tdata;
     tdata.time_step = Current.TimeStep;
     tdata.time_value = Current.Time;
-    tdata.freq_value = Current.Frequency;
 
+    /*Message::Info("------ PSO_P->SetFrequencyMultiplier  ");
+    if(PSO_P->SetFrequencyMultiplier == NULL) {
+      Message::Info("------ PSO_P->SetFrequencyMultiplier  NULL");
+    }
+    else {
+      Message::Info("------ PSO_P->SetFrequencyMultiplier  NOT NULL %s",
+                    PSO_P->SetFrequencyMultiplier);
+    }*/
+    double frequencyMultiplier;
+    sscanf(PSO_P->SetFrequencyMultiplier, "%lf", &frequencyMultiplier);
+    //Message::Info("------ frequencyMultiplier = %lf", frequencyMultiplier);
+    tdata.freq_value = Current.Frequency / frequencyMultiplier;
+    
     for(int ipq = 0; ipq < List_Nbr(PSO_P->PointQuantities); ipq++) {
       PostQuantity_P = (struct PostQuantity *)List_Pointer(
         PostProcessing_P->PostQuantity,
         *(int *)List_Pointer(PSO_P->PointQuantities, ipq));
       PointDataSet pd_set(PostQuantity_P->Name);
-
       pd_set.groupName =
         (PSO_P->PartName != NULL) ?
           PSO_P->PartName :
