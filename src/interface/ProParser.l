@@ -429,7 +429,7 @@ Skin                         return tSkin;
 Sleep                        return tSleep;
 Smoothing                    return tSmoothing;
 PartName                     return tPartName;
-SetFrequencyMultiplier       return tSetFrequencyMultiplier;
+SetFrequencyScale            return tSetFrequencyScale;
 SolidAngle                   return tSolidAngle;
 SolveAgainWithOther          return tSolveAgainWithOther;
 SolveJac_AdaptRelax          return tSolveJac_AdaptRelax;

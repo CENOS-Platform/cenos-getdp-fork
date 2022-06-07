@@ -1575,7 +1575,7 @@ struct PostSubOperation {
   char *ValueName, *Label;
   char *FileOut;
   char *PartName;
-  char *SetFrequencyMultiplier;
+  char *SetFrequencyScale;
   List_T *TimeStep_L, *Value_L, *Iso_L, *Frequency_L;
   List_T *TimeValue_L, *TimeImagValue_L;
   int TimeInterval_Flag;

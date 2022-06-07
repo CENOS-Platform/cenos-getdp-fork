@@ -358,7 +358,7 @@ struct doubleXstring{
 %token        tFile tDepth tDimension tComma tTimeStep tHarmonicToTime
 %token        tCosineTransform tTimeToHarmonic
 %token        tValueIndex tValueName
-%token        tFormat tHeader tFooter tSkin tSmoothing tPartName tSetFrequencyMultiplier
+%token        tFormat tHeader tFooter tSkin tSmoothing tPartName tSetFrequencyScale
 %token        tTarget tSort tIso tNoNewLine tNoTitle tDecomposeInSimplex tChangeOfValues
 %token        tTimeLegend tFrequencyLegend tEigenvalueLegend
 %token        tStoreInRegister tStoreInVariable
@@ -8216,9 +8216,9 @@ PrintExternalOption :
     {
       PostSubOperation_S.PartName = $3;
     }
-  | ',' tSetFrequencyMultiplier  CharExpr
+  | ',' tSetFrequencyScale  CharExpr
     {
-      PostSubOperation_S.SetFrequencyMultiplier = $3;
+      PostSubOperation_S.SetFrequencyScale = $3;
     }
  ;
 

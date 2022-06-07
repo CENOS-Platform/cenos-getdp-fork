@@ -105,18 +105,18 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     tdata.time_step = Current.TimeStep;
     tdata.time_value = Current.Time;
 
-    /*Message::Info("------ PSO_P->SetFrequencyMultiplier  ");
-    if(PSO_P->SetFrequencyMultiplier == NULL) {
-      Message::Info("------ PSO_P->SetFrequencyMultiplier  NULL");
+    /*Message::Info("------ PSO_P->SetFrequencyScale  ");
+    if(PSO_P->SetFrequencyScale == NULL) {
+      Message::Info("------ PSO_P->SetFrequencyScale  NULL");
     }
     else {
-      Message::Info("------ PSO_P->SetFrequencyMultiplier  NOT NULL %s",
-                    PSO_P->SetFrequencyMultiplier);
+      Message::Info("------ PSO_P->SetFrequencyScale  NOT NULL %s",
+                    PSO_P->SetFrequencyScale);
     }*/
-    double frequencyMultiplier;
-    sscanf(PSO_P->SetFrequencyMultiplier, "%lf", &frequencyMultiplier);
-    //Message::Info("------ frequencyMultiplier = %lf", frequencyMultiplier);
-    tdata.freq_value = Current.Frequency / frequencyMultiplier;
+    double frequencyScale;
+    sscanf(PSO_P->SetFrequencyScale, "%lf", &frequencyScale);
+    //Message::Info("------ frequencyMultiplier = %lf", SetFrequencyScale);
+    tdata.freq_value = Current.Frequency / frequencyScale;
     
     for(int ipq = 0; ipq < List_Nbr(PSO_P->PointQuantities); ipq++) {
       PostQuantity_P = (struct PostQuantity *)List_Pointer(
