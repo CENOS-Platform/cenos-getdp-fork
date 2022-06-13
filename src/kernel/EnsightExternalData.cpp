@@ -58,13 +58,13 @@ void EnsightExternalData::write(std::string filename)
   duration<double, std::milli> ms_writeGeometryBinary = t7 - t6;
   duration<double, std::milli> ms_writeCaseFile = t8 - t7;
 
-  //Message::Info("ms_groupParts = %f", ms_groupParts);
-  //Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
-  //Message::Info("ms_addGeometry = %f", ms_addGeometry);
-  //Message::Info("ms_addVariable = %f", ms_addVariable);
-  //Message::Info("ms_writeVariableBinary = %f", ms_writeVariableBinary);
-  //Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
-  //Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);
+  /*Message::Info("ms_groupParts = %f", ms_groupParts);
+  Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
+  Message::Info("ms_addGeometry = %f", ms_addGeometry);
+  Message::Info("ms_addVariable = %f", ms_addVariable);
+  Message::Info("ms_writeVariableBinary = %f", ms_writeVariableBinary);
+  Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
+  Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);*/
 }
 void EnsightExternalData::addGeometry()
 {
@@ -134,6 +134,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
                    current_filename.c_str(), strerror(errno));
     return;
   }
+  
 
   WriteStringToFile("C Binary", fd);
   WriteStringToFile("Written by GetDP", fd);
@@ -304,7 +305,8 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
                    current_filename.c_str(), strerror(errno));
     return;
   }
-
+ 
+ 
   for(auto var : Ensight_Case.vars) {
     if(var.first == data_sets[last_time_step].point_data[0].name) {
       WriteStringToFile(var.first, fd); // variable name
