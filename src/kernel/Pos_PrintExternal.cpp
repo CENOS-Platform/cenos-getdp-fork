@@ -94,6 +94,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
       post_data->addElement(PE, Group_P->Num);
       Destroy_PostElement(PE);
     }
+    List_Delete(PostElement_L);
   }
 
   // outer time loop
@@ -104,7 +105,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     TimeStepData tdata;
     tdata.time_step = Current.TimeStep;
     tdata.time_value = Current.Time;
-
+    
     /*Message::Info("------ PSO_P->SetFrequencyScale  ");
     if(PSO_P->SetFrequencyScale == NULL) {
       Message::Info("------ PSO_P->SetFrequencyScale  NULL");
@@ -185,7 +186,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
         struct xyzv xyzv, *xyzv_P;
 
         xyzv_T = Tree_Create(sizeof(struct xyzv), fcmp_xyzv);
-        Message::Info("Smoothing (phase 1)");
+        //Message::Info("Smoothing (phase 1)");
         for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
           struct PostElement *PE =
             *(struct PostElement **)List_Pointer(PostElement_L, iPost);
@@ -208,7 +209,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
           }
         }
 
-        Message::Info("Smoothing (phase 2)");
+        //Message::Info("Smoothing (phase 2)");
 
         for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
           struct PostElement *PE =
