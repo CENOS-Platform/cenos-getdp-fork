@@ -1520,8 +1520,12 @@ void Pos_PrintOnRegion(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
       }
 	  
 	  double time_val = Current.Time;
-      if(Current.DefineSystem_P->Type == VAL_COMPLEX)
-		  time_val = Current.DofData->Val_Pulsation[0] / TWO_PI;
+      if (Current.DefineSystem_P != NULL) {
+        if(Current.DefineSystem_P->Type == VAL_COMPLEX) {
+          time_val = Current.DofData->Val_Pulsation[0] / TWO_PI;
+        }
+      }
+     
 	  
       Format_PostValue(PQ_P, PSO_P, PSO_P->Format, PSO_P->Comma,
                        Group_FunctionType, iTime, time_val, NbrTimeStep, i,
