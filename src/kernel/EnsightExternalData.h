@@ -41,6 +41,9 @@ public:
 
   void write(std::string fname) override;
 
+  int getNextTimeStep(std::string fname);
+  std::vector<double> getTimeValues(std::string fname);
+
   void writeCaseFile(std::string fname);
   void writeVariableASCII(std::string fname);
   void writeVariableBinary(std::string fname);
