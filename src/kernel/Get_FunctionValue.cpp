@@ -15,7 +15,9 @@
 #define SQU(a) ((a) * (a))
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  G e t _ V a l u e F r o m F o r m                                       */

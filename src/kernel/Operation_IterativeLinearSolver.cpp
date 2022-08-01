@@ -13,7 +13,9 @@
 #include "Message.h"
 #include "OS.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 // for performance tests
 //#define TIMER

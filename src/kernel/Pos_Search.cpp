@@ -16,7 +16,7 @@
 
 #define SQU(a) ((a) * (a))
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 static struct Geo_Element *LastGeoElement;
 

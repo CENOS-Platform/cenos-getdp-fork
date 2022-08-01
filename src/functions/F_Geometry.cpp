@@ -20,7 +20,9 @@
 
 #define SQU(a) ((a) * (a))
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 void F_Normal(F_ARG)
 {

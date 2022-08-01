@@ -14,7 +14,9 @@
 
 #define SQU(a) ((a) * (a))
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 static int Warning_Dt = 0, Warning_DtStatic = 0;
 static int Warning_DtDt = 0, Warning_DtDtStatic = 0, Warning_DtDtFirstOrder = 0;

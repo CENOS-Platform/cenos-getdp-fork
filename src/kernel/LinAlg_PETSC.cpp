@@ -28,7 +28,9 @@
 // FIXME: this dependency should be removed
 #include "ProData.h"
 #include "DofData.h"
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 #if defined(HAVE_PETSC)
 

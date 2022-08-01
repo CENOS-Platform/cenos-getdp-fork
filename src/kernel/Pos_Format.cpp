@@ -42,7 +42,7 @@
 #define SQU(a) ((a) * (a))
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 extern int Flag_BIN, Flag_GMSH_VERSION;
 

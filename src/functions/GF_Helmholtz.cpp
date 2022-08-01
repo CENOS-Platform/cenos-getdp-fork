@@ -27,7 +27,9 @@
 #define CUB(a) ((a) * (a) * (a))
 #define ONE_OVER_FOUR_PI 7.9577471545947668E-02
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  G F _ H e l m h o l t z                                                 */

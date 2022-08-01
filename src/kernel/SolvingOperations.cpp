@@ -35,8 +35,12 @@
 #define TWO_PI 6.2831853071795865
 #define GOLDENRATIO 1.6180339887498948482
 
+#include <thread>
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+extern struct CurrentData* Current_ptr;
+extern bool copy_in_progress;
+extern std::unique_ptr<std::thread> thread_ptr;
 
 extern int TreatmentStatus;
 
@@ -3503,8 +3507,23 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
 
     case OPERATION_POSTOPERATION:
       Message::Info("PostOperation");
-      Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
-                              Operation_P->Case.PostOperation.PostOperations);
+	  Current_ptr = &Current;
+	  copy_in_progress = true;
+	  if (thread_ptr != nullptr)
+            thread_ptr->join();
+		 
+	  thread_ptr = std::unique_ptr<std::thread>(
+			new std::thread(
+			Operation_PostOperation,
+			Resolution_P,
+			DofData_P0,
+			GeoData_P0,
+			Operation_P->Case.PostOperation.PostOperations));
+
+//thread_ptr->join();
+   //   Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
+   //                           Operation_P->Case.PostOperation.PostOperations);
+	  while(copy_in_progress) {};
       break;
 
       /*  -->  D e l e t e F i l e  */

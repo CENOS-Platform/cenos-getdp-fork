@@ -22,7 +22,9 @@
 #include "Message.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  O p e r a t i o n _ C h a n g e O f C o o r d i n a t e s               */

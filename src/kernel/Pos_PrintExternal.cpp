@@ -15,7 +15,7 @@
 #include "EnsightExternalData.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 extern char *Name_Path;
 /* ------------------------------------------------------------------------ */
 /*  P o s _ P r i n t V T U                                       */

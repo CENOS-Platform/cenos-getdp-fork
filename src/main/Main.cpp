@@ -20,6 +20,11 @@
 
 #include <windows.h>
 #include <wchar.h>
+#include <memory>
+#include <thread>
+
+std::unique_ptr<std::thread> thread_ptr;
+bool copy_in_progress = false;
 
 static char *toUTF8(wchar_t *src)
 {
@@ -78,5 +83,8 @@ int main(int argc, char **argv)
   GetDP(args);
 #endif
 
+  if (thread_ptr != nullptr)
+	  thread_ptr->join();
+  
   return 0;
 }

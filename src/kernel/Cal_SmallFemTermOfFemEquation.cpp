@@ -19,7 +19,9 @@
 #include "SystemHelper.h"
 #include "FormulationPoisson.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 // SmallFEM: helping functions //
 double fDirichlet0(fullVector<double> &xyz) { return -1; }

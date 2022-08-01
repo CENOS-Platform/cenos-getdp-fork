@@ -13,7 +13,9 @@
 #include "SolvingOperations.h"
 #include "Message.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 void Operation_Debug(struct Operation *Operation_P, struct DofData *DofData_P)
 {

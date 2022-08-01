@@ -4,7 +4,9 @@
 #include "GeoData.h"
 #include "Get_Geometry.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 extern struct EnsightCase Ensight_Case;
 
 PointDataSet::PointDataSet(char *n) : name(n)

@@ -13,7 +13,9 @@
 #define ONE_OVER_TWO_PI 1.5915494309189534E-01
 #define ONE_OVER_FOUR_PI 7.9577471545947668E-02
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  G F _ L a p l a c e                                                     */

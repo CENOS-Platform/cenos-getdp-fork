@@ -17,7 +17,9 @@
 #define SQU(a) ((a) * (a))
 #define CUB(a) ((a) * (a) * (a))
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  F _ B i o t S a v a r t                                                 */
