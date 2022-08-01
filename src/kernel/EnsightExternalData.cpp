@@ -6,6 +6,7 @@
 #include <cstring>
 #include <algorithm>
 #include <unordered_set>
+#include <fstream>  
 
 #include <chrono>
 extern char *Name_Path;
@@ -66,6 +67,81 @@ void EnsightExternalData::write(std::string filename)
   Message::Info("ms_writeGeometryBinary = %f", ms_writeGeometryBinary);
   Message::Info("ms_writeCaseFile = %f", ms_writeCaseFile);*/
 }
+int EnsightExternalData::getNextTimeStep(std::string fname)
+{
+  std::ifstream textFileStream;
+  int nextStep = 0;
+  textFileStream.open(fname.c_str());
+  // Check, if the text file could be opened and continue only, of OK
+  // Message::Info("Is open %d", textFileStream.is_open());
+  if(textFileStream.is_open()) {
+    // Message::Info("in file");
+    std::string word;
+    // look for line number of steps:
+    std::string keyWord = "steps:";
+    bool save_next_word = false;
+    // read each word separated by spaces
+    while(textFileStream >> word) {
+      // Message::Info("in while");
+      // Message::Info("The word is %s", word.c_str());
+      if(save_next_word) {
+        nextStep = std::stoi(word);
+        textFileStream.close();
+        return nextStep;
+      }
+      if(word == keyWord) {
+        save_next_word = true;
+        // Message::Info("save_next_word = true");
+      }
+    }
+  }
+  else {
+    // Message::Info("Starting new simulation");
+  }
+  textFileStream.close();
+  return nextStep;
+}
+std::vector<double> EnsightExternalData::getTimeValues(std::string fname)
+{
+  std::ifstream textFileStream;
+  std::vector<double> timeValues;
+  double time;
+  int incrementStep = 1;
+  textFileStream.open(fname.c_str());
+  // Check, if the text file could be opened and continue only, of OK
+  // Message::Info("Is open %d", textFileStream.is_open());
+  if(textFileStream.is_open()) {
+    // Message::Info("in file");
+    std::string word;
+    // look for line number of steps:
+    std::string keyWord = "values:";
+    bool save_next_word = false;
+    // read each word separated by spaces
+    while(textFileStream >> word) {
+      // Message::Info("in while");
+      // Message::Info("The word is %s \n", word.c_str());
+      if(save_next_word) {
+        time = std::stod(word);
+        timeValues.push_back(time);
+        Message::Info("The word is %s", word.c_str());
+        Message::Info("The time is %lf", time);
+      }
+      if(word == keyWord || save_next_word) {
+        save_next_word = true;
+        // Message::Info("save_next_word = true");
+      }
+    }
+    textFileStream.close();
+    // Message::Info("timeValues[0] = %d", timeValues[0]);
+    Message::Info("timeValues.size() = %d", timeValues.size());
+    return timeValues;
+  }
+  else {
+    // Message::Info("Starting new simulation");
+    // textFileStream.close();
+    return timeValues;
+  }
+}
 void EnsightExternalData::addGeometry()
 {
   // add geometries for global .geo file
@@ -112,6 +188,18 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
 
   int step_for_naming;
 
+  // define file path to find the next step, should be a resFile
+  std::string resFile_filename;
+  char resFile_charBuffer[512];
+  snprintf(charBuffer, sizeof(resFile_charBuffer), "%s.%d.%s", "resFile", 0,
+           "case");
+  resFile_filename = Fix_RelativePath(charBuffer, Name_Path);
+  resFile_filename = fname + charBuffer;
+
+  int next_step_from_res = getNextTimeStep(resFile_filename);
+  Message::Info("getNextTimeStep(resFile_filename) = %d",
+                getNextTimeStep(resFile_filename));
+
   // ugly thing for counting freqStep
   if(data_sets[0].freq_value != 0) {
     step_for_naming = 0;
@@ -124,6 +212,10 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
   else {
     step_for_naming = data_sets[0].time_step - 1;
   }
+
+  step_for_naming = getTimeValues(resFile_filename).size();
+  Message::Info("getTimeValues(resFile_filename).size() = %d",
+                getTimeValues(resFile_filename).size());
 
   snprintf(charBuffer, sizeof(charBuffer), "%sGlobal.%d.%05d.geo", "resFile", 0,
            step_for_naming);
@@ -223,7 +315,15 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   else {
     step_for_naming = data_sets[0].time_step - 1;
   }
+  // define file path to find the next step, should be a resFile
+  std::string resFile_filename;
+  char resFile_charBuffer[512];
+  snprintf(charBuffer, sizeof(resFile_charBuffer), "%s.%d.%s", "resFile", 0,
+           "case");
+  resFile_filename = Fix_RelativePath(charBuffer, Name_Path);
+  resFile_filename = fname + charBuffer;
 
+  step_for_naming = getTimeValues(resFile_filename).size();
   // UNCOMMENT THIS FOR DEBUGGING, THIS WRITES A .GEO FILE ONLY FOR THE CURRENT
   // POSTOPERATION int step_for_naming;
 
@@ -648,8 +748,23 @@ void EnsightExternalData::writeCaseFile(std::string fname)
   snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%s", "resFile", 0, "case");
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
 
-  current_filename = fname + charBuffer;
+  // define file path to find the next step, should be a resFile
+  std::string resFile_filename;
+  char resFile_charBuffer[512];
+  snprintf(charBuffer, sizeof(resFile_charBuffer), "%s.%d.%s", "resFile", 0,
+           "case");
+  resFile_filename = Fix_RelativePath(charBuffer, Name_Path);
+  resFile_filename = fname + charBuffer;
 
+  /*int nextTimeStep = getNextTimeStep(resFile_filename);
+  Message::Info("nextTimeStep = %d", nextTimeStep);
+  int incrementTimeStep = getIncrementTimeStep(resFile_filename);
+  Message::Info("incrementTimeStep = %d", nextTimeStep);*/
+  std::vector<double> timeValues = getTimeValues(resFile_filename);
+  // Message::Info("timeValues.size() = %d", timeValues.size());
+
+  current_filename = fname + charBuffer;
+  // Message::Info("next step %d", getNextTimeStep(current_filename));
   remove(current_filename.c_str());
 
   if(!(fd = FOpen(current_filename.c_str(), "w"))) {
@@ -657,6 +772,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
                    current_filename.c_str(), strerror(errno));
     return;
   }
+
   fprintf(fd, "FORMAT\ntype: ensight gold \n \n \nGEOMETRY \nmodel: 1 "
               "resFileGlobal.0.*****.geo \n \nVARIABLE\n");
   for(size_t var = 0; var < Ensight_Case.postNames.size(); var++) {
@@ -665,15 +781,43 @@ void EnsightExternalData::writeCaseFile(std::string fname)
     fprintf(fd, "%s resFile.0.*****_n.%s\n\n", Ensight_Case.postNames[var],
             Ensight_Case.postNames[var]);
   }
+  // add last timevalue if it is not repeated before counting steps
+  if(timeValues.size() != 0) {
+    if(timeValues.back() < Ensight_Case.time_values.back()) {
+      timeValues.push_back(Ensight_Case.time_values.back());
+    }
+  }
 
   fprintf(fd, "\nTIME \ntime set: 1 \nnumber of steps: %lld\n",
-          Ensight_Case.time_values.size());
+          timeValues.size());
   fprintf(fd, "filename start number: 00000 \nfilename increment: 00001\n");
   fprintf(fd, "time values:\n");
-  for(size_t time_step = 0; time_step < Ensight_Case.time_values.size();
+
+  // old with global variable, all time steps stored. It does not work if
+  // starting simulation from previous step
+  /*for(size_t time_step = 0; time_step < Ensight_Case.time_values.size();
       time_step++) {
     double time_step_aux = Ensight_Case.time_values[time_step];
     fprintf(fd, "%lf\n", time_step_aux);
+  }*/
+
+  // reading previous file, write previous time steps
+  for(double time : timeValues) {
+    fprintf(fd, "%lf\n", static_cast<float>(time));
+  }
+
+  // If there is no time values, we use old approach.
+  if(timeValues.size() != 0) {
+    if(timeValues.back() < Ensight_Case.time_values.back()) {
+      fprintf(fd, "%lf\n", Ensight_Case.time_values.back());
+    }
+  }
+  else {
+    for(size_t time_step = 0; time_step < Ensight_Case.time_values.size();
+        time_step++) {
+      double time_step_aux = Ensight_Case.time_values[time_step];
+      fprintf(fd, "%lf\n", time_step_aux);
+    }
   }
   fclose(fd);
 }
