@@ -9,7 +9,9 @@
 #include "MallocUtils.h"
 #include "Message.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  Interpolation                                                           */

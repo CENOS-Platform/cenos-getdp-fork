@@ -24,7 +24,9 @@
 #define SQU(a) ((a) * (a))
 #define TWO_PI 6.2831853071795865
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 extern char *Name_Path;
 
 struct EigenPar {

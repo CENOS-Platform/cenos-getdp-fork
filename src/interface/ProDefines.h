@@ -17,7 +17,7 @@
 #include "BF.h"
 #include "GF.h"
 #include "Cal_Value.h"
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 struct StringXDefine Mesh_Format[] = {
   {"gmsh", FORMAT_GMSH}, {"Gmsh", FORMAT_GMSH}, {NULL, FORMAT_GMSH}};
@@ -332,6 +332,7 @@ struct StringXPointer Current_Value[] = {
   {"KSPIteration", &Current.KSPIteration},
   {"KSPResidual", &Current.KSPResidual},
   {"KSPSystemSize", &Current.KSPSystemSize},
+  {"Frequency", &Current.Frequency},
   {NULL, NULL}};
 
 struct StringXDefine PostQuantityTerm_EvaluationType[] = {
@@ -364,6 +365,9 @@ struct StringXDefine PostSubOperation_Format[] = {
   {"Gnuplot", FORMAT_GNUPLOT},
   {"Adaptation", FORMAT_ADAPT},
   {NULL, FORMAT_GMSH}};
+
+struct StringXDefine PostSubOperation_ExternalFormat[] = {
+  {"VTU", FORMAT_VTU}, {"ENSIGHT", FORMAT_ENSIGHT}, {NULL, FORMAT_VTU}};
 
 struct StringXDefine PostSubOperation_FormatTag[] = {{"Time", TAG_TIME},
                                                      {"TimeStep", TAG_TIMESTEP},

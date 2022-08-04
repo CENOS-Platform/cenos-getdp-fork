@@ -30,7 +30,9 @@ void F77NAME(dgesv)(int *N, int *nrhs, double *A, int *lda, int *ipiv,
 }
 #endif
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 extern int Flag_IterativeLoopConverged;
 extern int Flag_RESTART;
 

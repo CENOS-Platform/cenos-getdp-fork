@@ -18,7 +18,7 @@
 #include "Message.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 /* ------------------------------------------------------------------------ */
 /*  P o s _ L o c a l O r I n t e g r a l Q u a n t i t y                   */

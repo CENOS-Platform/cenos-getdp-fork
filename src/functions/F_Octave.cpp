@@ -8,7 +8,9 @@
 #include "F.h"
 #include "Message.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 // This file defines a simple interface to Octave.
 //

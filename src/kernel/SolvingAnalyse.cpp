@@ -23,7 +23,7 @@
 #define TWO_PI 6.2831853071795865
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 extern int Flag_PRE, Flag_CAL, Flag_POS;
 extern int Flag_RESTART;
@@ -280,7 +280,7 @@ void Init_HarInDofData(struct DefineSystem *DefineSystem_P,
 
   if(DofData_P->NbrHar > 1) {
     for(j = 0; j < DofData_P->NbrHar / 2; j++)
-      Message::Info("System '%s' : Complex, Frequency = %.8g Hz",
+      Message::Info("System dd '%s' : Complex, Frequency = %.8g Hz",
                     DefineSystem_P->Name, DofData_P->Val_Pulsation[j] / TWO_PI);
   }
   else {
@@ -486,6 +486,7 @@ void SolvingAnalyse()
       Current.RelativeDifference = 0.;
       Current.RelaxationFactor = 1.;
       Current.Breakpoint = -1;
+      Current.Frequency = 0.;
 
       TreatmentStatus = STATUS_CAL;
 
@@ -672,6 +673,7 @@ void SolvingAnalyse()
           Current.Time = Solution_P->Time;
           Current.TimeImag = Solution_P->TimeImag;
           Current.TimeStep = 0.;
+          Current.Frequency = Solution_P->Frequency;
           Current.Breakpoint = -1;
           Free(Solution_P->TimeFunctionValues);
           Solution_P->TimeFunctionValues = Get_TimeFunctionValues(DofData_P);

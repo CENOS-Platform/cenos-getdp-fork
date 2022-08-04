@@ -57,7 +57,9 @@
 #define PCFactorSetMatSolverPackage PCFactorSetMatSolverType
 #endif
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 extern void _fillseq(Vec &V, Vec &Vseq); // from LinAlg_PETsc.cpp
 

@@ -12,7 +12,9 @@
 #include "GeoElementRTree.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 static int Nbr_ElementSource, i_ElementSource;
 static List_T *RegionSource_L;

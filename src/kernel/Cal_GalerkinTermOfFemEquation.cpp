@@ -28,7 +28,9 @@
 #include "Message.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 std::map<int, bool> assDiag_done;
 

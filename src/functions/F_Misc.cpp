@@ -16,7 +16,9 @@
 #include "Cal_Value.h"
 #include "Cal_Quantity.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 void F_Printf(F_ARG)
 {

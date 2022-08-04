@@ -11,7 +11,9 @@
 #include "Message.h"
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  P r e _ I n i t T e r m O f F e m F o r m u l a t i o n                 */

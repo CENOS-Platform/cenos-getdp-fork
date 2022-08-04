@@ -23,7 +23,9 @@
 #include <gmsh/nodalBasis.h>
 #endif
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  Create/Destroy/Compare                                                  */

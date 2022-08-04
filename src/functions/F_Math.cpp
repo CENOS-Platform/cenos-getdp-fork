@@ -16,7 +16,9 @@
 #include "Message.h"
 #include "Bessel.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  C math functions (scalar, 1 argument, imaginary part set to zero)       */

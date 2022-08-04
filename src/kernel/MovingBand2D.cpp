@@ -19,7 +19,9 @@
 
 #define SQU(a) ((a) * (a))
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*              M o v i n g B a n d 2 D                                     */

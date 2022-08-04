@@ -11,6 +11,7 @@
 #include <vector>
 #include "GetDPConfig.h"
 #include "ListUtils.h"
+#include <unordered_map>
 
 #define DIM_0D 0
 #define DIM_1D 1
@@ -1077,8 +1078,12 @@ struct Operation {
       double Alpha;
     } AddCorrection;
     struct {
-      double Alpha;
+      int ExpressionIndex;
     } MultiplySolution;
+    struct {
+      int  ExpressionIndex;
+	  int  ConstraintIndex;
+    } MultiplyConstraint ;
     struct {
       int Size;
       List_T *Save;
@@ -1417,6 +1422,7 @@ struct IterativeLoopSystem {
 #define OPERATION_SCATTERVARIABLES 117
 #define OPERATION_EXIT 118
 #define OPERATION_GENERATELISTOFRHS 119
+#define OPERATION_MULTIPLYCONSTRAINT         120
 
 /* ChangeOfState.Type */
 #define CHANGEOFSTATE_NOCHANGE 0
@@ -1491,6 +1497,40 @@ struct PostQuantityTerm {
 /*  P o s t O p e r a t i o n                                               */
 /* ------------------------------------------------------------------------ */
 
+// used for Enisght writer
+
+struct PostExternalElementCopy {
+  int type;
+  int index;
+  int region;
+  std::vector<int> nodes;
+  std::vector<std::vector<double> > nodes_coordinates;
+}; // dummy copy of PostExternalElement to have it available for more code
+struct elementsInPart {
+  int part;
+  std::string groupName;
+  std::vector<PostExternalElementCopy> elements;
+  std::vector<int> nodes;
+  std::vector<std::vector<double> > nodes_coordinates;
+  std::map<int, std::vector<int> >
+    type_el_Part; // stores element type as key and vector element references
+                  // with this type as value
+};
+struct EnsightCase {
+  std::vector<char *> postNames;
+  std::vector<int> valueTypes;
+  std::vector<std::vector<double> > nodes_coordinates_all;
+  std::vector<double> time_values; // stores time_values for .case file writting
+  std::vector<elementsInPart>
+    parts; // stores the parts for the current variable field
+  std::unordered_map<
+    char *,
+    std::unordered_map<int, std::unordered_map<int, std::vector<double> > > >
+    vars; // char is the name of the variable, first int is the part number,
+          // second int is the node, vector double is the data
+  std::unordered_map<int, char *> region_name_map;
+};
+
 struct PostOperation {
   char *Name, *AppendString, *Comma;
   bool Hidden;
@@ -1505,9 +1545,11 @@ struct PostOperation {
 };
 
 struct PostSubOperation {
+  List_T *PointQuantities;
   int PostQuantityIndex[2], PostQuantitySupport[2];
   int Type, SubType, CombinationType;
   int Depth, Skin, Smoothing, Dimension, HarmonicToTime, CatFile;
+  int Binary; // used for PrintExternal
   char *Comma;
   int TimeToHarmonic;
   int FourierTransform;
@@ -1532,6 +1574,8 @@ struct PostSubOperation {
   double Target;
   char *ValueName, *Label;
   char *FileOut;
+  char *PartName;
+  char *SetFrequencyScale;
   List_T *TimeStep_L, *Value_L, *Iso_L, *Frequency_L;
   List_T *TimeValue_L, *TimeImagValue_L;
   int TimeInterval_Flag;
@@ -1583,6 +1627,7 @@ struct PostOpSolutions {
 #define POP_MERGE 5
 #define POP_DELETEFILE 6
 #define POP_CREATEDIR 7
+#define POP_PRINTEXTERNAL 8
 
 /* PostOperation.SubType */
 #define PRINT_ONREGION 1
@@ -1644,6 +1689,10 @@ struct PostOpSolutions {
 #define FORMAT_LOOP_ERROR 21
 #define FORMAT_GETDP 22
 #define FORMAT_ELEMENT_TABLE 23
+
+/* PostSubOperation.Format for PrintExternal */
+#define FORMAT_VTU 1
+#define FORMAT_ENSIGHT 2
 
 /* PostSubOperation.Sort */
 #define SORT_BY_POSITION 1
@@ -1723,6 +1772,8 @@ struct CurrentData {
 
   // Iterative linear system solvers
   double KSPIterations, KSPIteration, KSPResidual, KSPSystemSize;
+  
+  double Frequency;
 };
 
 /* ------------------------------------------------------------------------ */

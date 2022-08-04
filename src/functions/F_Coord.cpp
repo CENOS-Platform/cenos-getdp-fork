@@ -14,7 +14,9 @@
 #include "Get_Geometry.h"
 #endif
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 /* ------------------------------------------------------------------------ */
 /*  Get a Vector containing the current coordinates                         */

@@ -26,7 +26,11 @@ struct Problem Problem_S;
 
 // Global run-time current data: this is the only current data
 // structure that is instantiated
-struct CurrentData Current;
+thread_local struct CurrentData Current;
+struct CurrentData* Current_ptr;
+
+// Global ensight variables to create the case file for ensight format
+struct EnsightCase Ensight_Case;
 
 // Sorting functions
 
@@ -221,6 +225,7 @@ void Init_ProblemStructure()
   Current.KSPIteration = 0.0;
   Current.KSPResidual = 0.0;
   Current.KSPSystemSize = 0.0;
+  Current.Frequency = 0.0;
 }
 
 // FIXME: TODO to remove parser memory leaks!

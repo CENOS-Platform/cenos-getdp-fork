@@ -26,7 +26,9 @@
 #endif
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 
 #if defined(HAVE_KERNEL)
 extern int TreatmentStatus;

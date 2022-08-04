@@ -35,8 +35,12 @@
 #define TWO_PI 6.2831853071795865
 #define GOLDENRATIO 1.6180339887498948482
 
+#include <thread>
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+extern struct CurrentData* Current_ptr;
+extern bool copy_in_progress;
+extern std::unique_ptr<std::thread> thread_ptr;
 
 extern int TreatmentStatus;
 
@@ -295,6 +299,7 @@ void Generate_System(struct DefineSystem *DefineSystem_P,
     Solution_S.TimeStep = (int)Current.TimeStep;
     Solution_S.Time = Current.Time;
     Solution_S.TimeImag = Current.TimeImag;
+    Solution_S.Frequency = Current.Frequency;
     Solution_S.TimeFunctionValues = Get_TimeFunctionValues(DofData_P);
     Solution_S.SolutionExist = 1;
     LinAlg_CreateVector(&Solution_S.x, &DofData_P->Solver, DofData_P->NbrDof);
@@ -793,7 +798,8 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
 
   double aii, ajj;
   int nnz__;
-
+  double freq = 0.0;  
+  
   List_T *DofList_MH_moving;
   static int NbrDof_MH_moving;
   static int *NumDof_MH_moving;
@@ -1147,11 +1153,43 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
                              DofData_P0, GeoData_P0, &DefineSystem_P,
                              &DofData_P, Resolution2_P);
 
+	Get_ValueOfExpressionByIndex(Operation_P->Case.MultiplySolution.ExpressionIndex,
+				     NULL, 0., 0., 0., &Value) ;
+					 
       LinAlg_ProdVectorDouble(&DofData_P->CurrentSolution->x,
-                              Operation_P->Case.MultiplySolution.Alpha,
+                              Value.Val[0],
                               &DofData_P->CurrentSolution->x);
       break;
 
+      /*  -->  M u l t i p l y C o n s t  r a i n t        */
+      /*  ------------------------------------------  */
+
+    case OPERATION_MULTIPLYCONSTRAINT :
+      Init_OperationOnSystem("MultiplyConstraint",
+			     Resolution_P, Operation_P, DofData_P0, GeoData_P0,
+                             &DefineSystem_P, &DofData_P, Resolution2_P) ;
+	Get_ValueOfExpressionByIndex(Operation_P->Case.MultiplyConstraint.ExpressionIndex,
+				     NULL, 0., 0., 0., &Value) ; 
+    struct Constraint    * Constraint_P ;
+	Constraint_P = (struct Constraint*)
+	List_Pointer(Problem_S.Constraint, Operation_P->Case.MultiplyConstraint.ConstraintIndex) ;
+	for (int i = 0; i < List_Nbr(Constraint_P->ConstraintPerRegion); i++) 
+	{
+		struct ConstraintPerRegion * ConstraintPerRegion_P;
+		ConstraintPerRegion_P = (struct ConstraintPerRegion*)List_Pointer(Constraint_P->ConstraintPerRegion, i) ;			 
+		struct Expression * Expression_P;
+		Expression_P = (struct Expression *)List_Pointer(Problem_S.Expression, ConstraintPerRegion_P->Case.Fixed.ExpressionIndex);
+		for (int j = 0; j < List_Nbr(Expression_P->Case.WholeQuantity); j++) 
+		{
+			struct WholeQuantity * WholeQuantity_P;
+			WholeQuantity_P = (struct WholeQuantity*)List_Pointer(Expression_P->Case.WholeQuantity, j) ;					
+			WholeQuantity_P->Case.Constant = WholeQuantity_P->Case.Constant * Value.Val[0];
+		}
+	}
+
+		  
+      break;
+	  
       /*  -->  A d d O p p o s i t e F u l l S o l u t i o n  */
       /*  --------------------------------------------------  */
 
@@ -1916,8 +1954,10 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
           RES0 = (int)Current.TimeStep;
         }
       }
+      if(List_Nbr(DefineSystem_P->FrequencyValue) == 1)
+        List_Read(DefineSystem_P->FrequencyValue, 0, &freq);
       Dof_WriteFileRES(ResName, DofData_P, Flag_BIN, Current.Time,
-                       Current.TimeImag, (int)Current.TimeStep);
+                       Current.TimeImag, (int)Current.TimeStep, freq);
       break;
 
       /*  -->  S a v e S o l u t i o n W i t h E n t i t y N u m  */
@@ -1957,10 +1997,13 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
           (struct Solution *)List_Pointer(DofData_P->Solutions, i);
         if(!DofData_P->CurrentSolution->SolutionExist)
           Message::Warning("Solution #%d doesn't exist anymore: skipping", i);
-        else
+        else {
+          if(List_Nbr(DefineSystem_P->FrequencyValue) == 1)
+            List_Read(DefineSystem_P->FrequencyValue, 0, &freq);
           Dof_WriteFileRES(ResName, DofData_P, Flag_BIN,
                            DofData_P->CurrentSolution->Time,
-                           DofData_P->CurrentSolution->TimeImag, i);
+                           DofData_P->CurrentSolution->TimeImag, i, freq);
+        }
       }
       break;
 
@@ -2703,6 +2746,7 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
         if(DofData_P->Pulsation == NULL)
           DofData_P->Pulsation = List_Create(1, 2, sizeof(double));
         List_Reset(DofData_P->Pulsation);
+        Current.Frequency = Value.Val[0];
         Init_HarInDofData(DefineSystem_P, DofData_P);
       }
       else
@@ -3463,8 +3507,23 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
 
     case OPERATION_POSTOPERATION:
       Message::Info("PostOperation");
-      Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
-                              Operation_P->Case.PostOperation.PostOperations);
+	  Current_ptr = &Current;
+	  copy_in_progress = true;
+	  if (thread_ptr != nullptr)
+            thread_ptr->join();
+		 
+	  thread_ptr = std::unique_ptr<std::thread>(
+			new std::thread(
+			Operation_PostOperation,
+			Resolution_P,
+			DofData_P0,
+			GeoData_P0,
+			Operation_P->Case.PostOperation.PostOperations));
+
+//thread_ptr->join();
+   //   Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
+   //                           Operation_P->Case.PostOperation.PostOperations);
+	  while(copy_in_progress) {};
       break;
 
       /*  -->  D e l e t e F i l e  */

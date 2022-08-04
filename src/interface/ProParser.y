@@ -234,6 +234,7 @@ struct doubleXstring{
 %type <l>  TimeLoopAdaptiveSystems TimeLoopAdaptivePOs IterativeLoopSystems
 %type <l>  IterativeLoopPOs
 %type <c2> Struct_FullName
+%type <l>  RecursiveListOfPostQuantities ListOfPostQuantities
 /* ------------------------------------------------------------------ */
 %token  tEND tDOTS tSCOPE
 %token  tStr tStrPrefix tStrRelative tStrList
@@ -309,14 +310,14 @@ struct doubleXstring{
 %token      tNameOfFormulation tNameOfMesh tFrequency tSolver
 %token      tOriginSystem tDestinationSystem
 %token    tOperation tOperationEnd
-%token      tSetTime tSetTimeStep tSetDTime tDTime tSetFrequency
+%token      tSetTime tSetTimeStep tSetDTime tDTime tFrequencyValue tSetFrequency
 %token      tFourierTransform tFourierTransformJ
 %token      tCopySolution tCopyRHS tCopyResidual tCopyIncrement tCopyDofs
 %token      tGetNormSolution tGetNormResidual tGetNormRHS tGetNormIncrement
 %token      tOptimizerInitialize tOptimizerUpdate tOptimizerFinalize
 %token      tLanczos tEigenSolve tEigenSolveAndExpand tEigenSolveJac
 %token      tUpdate tUpdateConstraint tBreak tExit tGetResidual tCreateSolution
-%token      tEvaluate tSelectCorrection tAddCorrection tMultiplySolution
+%token      tEvaluate tSelectCorrection tAddCorrection tMultiplySolution tMultiplyConstraint
 %token      tAddOppositeFullSolution tSolveAgainWithOther tSetGlobalSolverOptions
 %token      tAddVector
 
@@ -357,7 +358,7 @@ struct doubleXstring{
 %token        tFile tDepth tDimension tComma tTimeStep tHarmonicToTime
 %token        tCosineTransform tTimeToHarmonic
 %token        tValueIndex tValueName
-%token        tFormat tHeader tFooter tSkin tSmoothing
+%token        tFormat tHeader tFooter tSkin tSmoothing tPartName tSetFrequencyScale
 %token        tTarget tSort tIso tNoNewLine tNoTitle tDecomposeInSimplex tChangeOfValues
 %token        tTimeLegend tFrequencyLegend tEigenvalueLegend
 %token        tStoreInRegister tStoreInVariable
@@ -372,6 +373,9 @@ struct doubleXstring{
 %token        tSendToServer
 %token        tDate tOnelabAction tCodeName tFixRelativePath
 %token        tAppendToExistingFile tAppendStringToFileName
+%token      tPrintExternal
+%token        tPointData 
+%token        tVTUFile tBinary
 
 /* ------------------------------------------------------------------ */
 /* Operators (with ascending priority): cf. C language                */
@@ -1787,6 +1791,12 @@ WholeQuantity_Single :
     { WholeQuantity_S.Type = WQ_CONSTANT ;
       WholeQuantity_S.Case.Constant = $1 ;
       List_Add(Current_WholeQuantity_L, &WholeQuantity_S) ;
+    }
+  | '$' tFrequencyValue
+    { WholeQuantity_S.Type = WQ_CURRENTVALUE;
+      Get_PointerForString(Current_Value, "Frequency", &FlagError,
+			   (void **)&WholeQuantity_S.Case.CurrentValue.Value);
+      List_Add(Current_WholeQuantity_L, &WholeQuantity_S);
     }
  ;
 
@@ -5409,7 +5419,7 @@ OperationTerm :
       Operation_P->Case.AddCorrection.Alpha = $5 ;
     }
 
-  | tMultiplySolution '[' String__Index ',' FExpr ']' tEND
+  | tMultiplySolution '[' String__Index ',' Expression ']' tEND
     { Operation_P = (struct Operation*)
 	List_Pointer(Operation_L, List_Nbr(Operation_L)-1) ;
       Operation_P->Type = OPERATION_MULTIPLYSOLUTION;
@@ -5419,7 +5429,27 @@ OperationTerm :
 	vyyerror(0, "Unknown System: %s", $3) ;
       Free($3) ;
       Operation_P->DefineSystemIndex = i ;
-      Operation_P->Case.MultiplySolution.Alpha = $5 ;
+     Operation_P->Case.MultiplySolution.ExpressionIndex = $5 ;
+    }
+
+  | tMultiplyConstraint '[' String__Index ',' Expression ',' String__Index ']' tEND
+    { Operation_P = (struct Operation*)
+	List_Pointer(Operation_L, List_Nbr(Operation_L)-1) ;
+      Operation_P->Type = OPERATION_MULTIPLYCONSTRAINT;
+      int i;
+      if ((i = List_ISearchSeq(Resolution_S.DefineSystem, $3,
+			       fcmp_DefineSystem_Name)) < 0)
+	vyyerror(0, "Unknown System: %s", $3) ;
+      Free($3) ;
+      Operation_P->DefineSystemIndex = i ;
+      Operation_P->Case.MultiplyConstraint.ExpressionIndex = $5 ;
+	  
+	        Constraint_Index =
+	List_ISearchSeq(Problem_S.Constraint, $7, fcmp_Constraint_Name);
+      if(Constraint_Index < 0)
+        vyyerror(1, "Constraint '%s' is not provided", $7);
+      Operation_P->Case.MultiplyConstraint.ConstraintIndex = Constraint_Index;
+      Free($7); 
     }
 
   | tAddOppositeFullSolution '[' String__Index ']' tEND
@@ -7455,7 +7485,17 @@ PostSubOperation :
       PostSubOperation_S.Type = POP_CREATEDIR;
       PostSubOperation_S.FileOut = $3;
     }
+  | tPrintExternal '[' tPointData ListOfPostQuantities ',' tOnElementsOf GroupRHS PrintExternalOptions ']' tEND
+    {
+      PostSubOperation_S.Type = POP_PRINTEXTERNAL;
+	  PostSubOperation_S.PostQuantityIndex[0] = 0;
+	  PostSubOperation_S.PointQuantities = $4;
+      PostSubOperation_S.Case.OnRegion.RegionIndex = Num_Group(&Group_S, strSave("PO_OnElementsOf"), $7);
 
+	  
+	  //PostSubOperation_ExternalFormat
+    }
+	
   | ParserCommandsWithoutOperations
     {
       PostSubOperation_S.Type = POP_NONE;
@@ -7463,6 +7503,40 @@ PostSubOperation :
 
  ;
 
+  
+ListOfPostQuantities :
+
+    String__Index
+    {
+      $$ = List_Create(1, 1, sizeof(int));
+      int i;
+      if((i = List_ISearchSeq(InteractivePostProcessing_S.PostQuantity, $1, fcmp_PostQuantity_Name)) < 0)
+	vyyerror(0, "Unknown PostProcessing Quantity: %s", $1);
+      else
+	List_Add($$, &i);
+      Free($1);
+    }
+
+  | '{' RecursiveListOfPostQuantities '}'
+    { $$ = $2;  }
+ ;
+
+RecursiveListOfPostQuantities :
+
+    /* none */
+    { $$ = List_Create(2, 2, sizeof(int)); }
+
+  | RecursiveListOfPostQuantities Comma String__Index
+    {
+      int i;
+      if((i = List_ISearchSeq(InteractivePostProcessing_S.PostQuantity, $3, fcmp_PostQuantity_Name)) < 0)
+	vyyerror(0, "Unknown PostProcessing Quantity: %s", $3);
+      else
+	List_Add($1, &i);
+      $$ = $1; Free($3);
+    }
+ ;
+ 
 PostQuantitiesToPrint :
 
     String__Index PostQuantitySupport ','
@@ -8093,6 +8167,60 @@ PrintOption :
     }
  ;
 
+
+
+PrintExternalOptions :
+    /* none */
+    {
+    }
+  | PrintExternalOptions PrintExternalOption
+ ;
+
+PrintExternalOption :
+    ',' tFile CharExpr
+    {
+      PostSubOperation_S.FileOut = $3;
+      PostSubOperation_S.CatFile = 0;
+    }
+  | ',' tFormat tSTRING
+    {
+      PostSubOperation_S.Format =
+	Get_DefineForString(PostSubOperation_ExternalFormat, $3, &FlagError);
+      if(FlagError){
+	Get_Valid_SXD($3, PostSubOperation_ExternalFormat);
+	vyyerror(0, "Unknown External PostProcessing Format: %s", $3);
+      }
+      Free($3);
+    }
+  | ',' tLastTimeStepOnly
+    {
+      PostSubOperation_S.LastTimeStepOnly = 1;
+    }
+  | ',' tLastTimeStepOnly FExpr
+    {
+      PostSubOperation_S.LastTimeStepOnly = (int)$3;
+    }  
+  | ',' tBinary
+    {
+      PostSubOperation_S.Binary = 1;
+    }
+  | ',' tSmoothing
+    {
+      PostSubOperation_S.Smoothing = 1;
+    }
+  | ',' tSmoothing FExpr
+    {
+      PostSubOperation_S.Smoothing = (int)$3;
+    }
+  | ',' tPartName  CharExpr
+    {
+      PostSubOperation_S.PartName = $3;
+    }
+  | ',' tSetFrequencyScale  CharExpr
+    {
+      PostSubOperation_S.SetFrequencyScale = $3;
+    }
+ ;
 
 /* ------------------------------------------------------------------------ */
 /*  P a r s e r C o m m a n d s                                             */

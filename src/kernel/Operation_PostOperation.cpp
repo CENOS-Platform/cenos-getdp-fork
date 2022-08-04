@@ -17,16 +17,20 @@
 #include "Message.h"
 #include "MallocUtils.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+extern struct CurrentData* Current_ptr;
 extern struct Problem Problem_S;
-
+extern bool copy_in_progress;
 /* ------------------------------------------------------------------------ */
 /*  O p e r a t i o n _ P o s t O p e r a t i o n                           */
 /* ------------------------------------------------------------------------ */
-
+#include <iostream>
 void Operation_PostOperation(Resolution *Resolution_P, DofData *DofData_P0,
                              GeoData *GeoData_P0, List_T *PostOperationNames)
 {
+  Current = *Current_ptr;
+
+  copy_in_progress = false;
   double Save_Time, Save_TimeImag, Save_TimeStep;
   char *str;
   int i, j, k;

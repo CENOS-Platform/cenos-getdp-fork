@@ -13,7 +13,9 @@
 #include "Cal_Quantity.h"
 #include "Message.h"
 
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
+
+
 extern int Init_Update;
 
 #define SQU(a) ((a) * (a))

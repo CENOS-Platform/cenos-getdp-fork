@@ -27,9 +27,10 @@
 #include "Message.h"
 
 #define SQU(a) ((a) * (a))
+#define TWO_PI 6.2831853071795865
 
 extern struct Problem Problem_S;
-extern struct CurrentData Current;
+extern thread_local struct CurrentData Current;
 
 extern int Flag_BIN, Flag_GMSH_VERSION;
 
@@ -1517,9 +1518,13 @@ void Pos_PrintOnRegion(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
                                          PSO_P->Visible, PSO_P->Closed);
         }
       }
-
+	  
+	  double time_val = Current.Time;
+      if(Current.DefineSystem_P->Type == VAL_COMPLEX)
+		  time_val = Current.DofData->Val_Pulsation[0] / TWO_PI;
+	  
       Format_PostValue(PQ_P, PSO_P, PSO_P->Format, PSO_P->Comma,
-                       Group_FunctionType, iTime, Current.Time, NbrTimeStep, i,
+                       Group_FunctionType, iTime, time_val, NbrTimeStep, i,
                        Current.NumEntity, Nbr_Region, Current.NbrHar,
                        PSO_P->HarmonicToTime, PSO_P->FourierTransform,
                        PSO_P->NoNewLine, &Value);
