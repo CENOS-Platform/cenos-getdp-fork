@@ -1540,6 +1540,7 @@ struct EnsightCase {
   std::vector<int> valueTypes;
   std::vector<std::vector<double> > nodes_coordinates_all;
   std::vector<double> time_values; // stores time_values for .case file writting
+  std::vector<double> freq_values; // stores time_values for .case file writting
   std::vector<elementsInPart>
     parts; // stores the parts for the current variable field
   std::unordered_map<
@@ -1548,6 +1549,8 @@ struct EnsightCase {
     vars; // char is the name of the variable, first int is the part number,
           // second int is the node, vector double is the data
   std::unordered_map<int, char *> region_name_map;
+  char * from_previous;
+
 };
 
 struct PostOperation {
@@ -1649,6 +1652,8 @@ struct PostOpSolutions {
 #define POP_DELETEFILE 6
 #define POP_CREATEDIR 7
 #define POP_PRINTEXTERNAL 8
+#define POP_PRINTEXTERNAL_STEPTYPE 9 //allows to choose between freq or time
+#define POP_PRINTEXTERNAL_FROM_PREVIOUS 10 // allows to choose between freq or time
 
 /* PostOperation.SubType */
 #define PRINT_ONREGION 1
@@ -1798,6 +1803,8 @@ struct CurrentData {
   double KSPConvergedReason;
 
   double Frequency;
+  char * Step_Type;
+  char * From_Previous;
 };
 
 /* ------------------------------------------------------------------------ */

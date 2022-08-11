@@ -283,3 +283,32 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
       }
           */
 }
+/* ------------------------------------------------------------------------ */
+/*  P o s _ O p t i o n s                                                   */
+/* ------------------------------------------------------------------------ */
+
+void Pos_PrintExternalStepType(struct PostSubOperation *PSO_P)
+{
+  int NbrTimeStep, iTime;
+  struct Value Value;
+  char *str = PSO_P->Case.Expression.String;
+  char *str2 = PSO_P->Case.Expression.String2;
+  List_T *expr = PSO_P->Case.Expression.Expressions;
+
+  if((!str || !strlen(str)) && (!str2 || !strlen(str2)) && !List_Nbr(expr))
+    return; // no options to set
+  Current.Step_Type = str;
+}
+
+void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P)
+{
+  int NbrTimeStep, iTime;
+  struct Value Value;
+  char *str = PSO_P->Case.Expression.String;
+  char *str2 = PSO_P->Case.Expression.String2;
+  List_T *expr = PSO_P->Case.Expression.Expressions;
+
+  if((!str || !strlen(str)) && (!str2 || !strlen(str2)) && !List_Nbr(expr))
+    return; // no options to set
+  Current.From_Previous = str;
+}

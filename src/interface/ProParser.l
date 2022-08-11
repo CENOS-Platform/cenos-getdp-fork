@@ -390,6 +390,8 @@ PrintConstants               return tPrintConstants;
 PrintGroup                   return tPrintGroup;
 Printf                       return tPrintf;
 PrintExternal                return tPrintExternal;
+PrintExternal_StepType       return tPrintExternal_StepType;
+PrintExternal_FromPrevious   return tPrintExternal_FromPrevious;
 
 Quantity                     return tQuantity;
 
