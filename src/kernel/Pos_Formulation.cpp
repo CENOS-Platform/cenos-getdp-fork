@@ -86,6 +86,13 @@ void Pos_FemFormulation(struct Formulation *Formulation_P,
     (struct QuantityStorage *)List_Pointer(QuantityStorage_L, 0);
 
   switch(PostSubOperation_P->Type) {
+  case POP_PRINTEXTERNAL_FROM_PREVIOUS:
+    Pos_PrintExternalFromPrevious(PostSubOperation_P);
+    break;
+  case POP_PRINTEXTERNAL_STEPTYPE:
+    Pos_PrintExternalStepType(PostSubOperation_P);
+    break;
+  
   case POP_PRINT:
     switch(PostSubOperation_P->SubType) {
     case PRINT_ONREGION:

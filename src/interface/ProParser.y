@@ -373,7 +373,7 @@ struct doubleXstring{
 %token        tSendToServer
 %token        tDate tOnelabAction tCodeName tFixRelativePath
 %token        tAppendToExistingFile tAppendStringToFileName
-%token      tPrintExternal
+%token        tPrintExternal tPrintExternal_StepType tPrintExternal_FromPrevious
 %token        tPointData 
 %token        tVTUFile tBinary
 
@@ -7449,6 +7449,23 @@ PostSubOperation :
   | tEcho '[' CharExpr PrintOptions ']' tEND
     {
       PostSubOperation_S.Type = POP_EXPRESSION;
+      PostSubOperation_S.Case.Expression.String = $3;
+      PostSubOperation_S.Case.Expression.String2 = NULL;
+      PostSubOperation_S.Case.Expression.Expressions = 0;
+      PostSubOperation_S.PostQuantityIndex[0] = -1;
+    }
+  | tPrintExternal_StepType '[' CharExpr PrintOptions ']' tEND
+    {
+      PostSubOperation_S.Type = POP_PRINTEXTERNAL_STEPTYPE;
+      PostSubOperation_S.Case.Expression.String = $3;
+      PostSubOperation_S.Case.Expression.String2 = NULL;
+      PostSubOperation_S.Case.Expression.Expressions = 0;
+      PostSubOperation_S.PostQuantityIndex[0] = -1;
+    }
+
+  | tPrintExternal_FromPrevious '[' CharExpr PrintOptions ']' tEND
+    {
+      PostSubOperation_S.Type = POP_PRINTEXTERNAL_FROM_PREVIOUS;
       PostSubOperation_S.Case.Expression.String = $3;
       PostSubOperation_S.Case.Expression.String2 = NULL;
       PostSubOperation_S.Case.Expression.Expressions = 0;

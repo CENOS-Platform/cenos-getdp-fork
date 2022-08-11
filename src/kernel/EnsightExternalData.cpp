@@ -13,6 +13,8 @@ extern char *Name_Path;
 
 extern struct EnsightCase Ensight_Case;
 
+extern struct CurrentData Current;
+
 EnsightExternalData::EnsightExternalData() {}
 
 EnsightExternalData::~EnsightExternalData() {}
@@ -22,42 +24,42 @@ EnsightExternalData::~EnsightExternalData() {}
 // Example 			PrintExternal[ PointData {<post-quantity-id>}, OnElementsOf
 // Region[{ <group-id>}], File "<folder-id>",Format ENSIGHT ,LastTimeStepOnly];
 using std::chrono::duration;
-using std::chrono::duration_cast;
+//using std::chrono::duration_cast;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
 void EnsightExternalData::write(std::string filename)
 {
-  auto t1 = high_resolution_clock::now();
+  //auto t1 = high_resolution_clock::now();
   groupParts();
-  auto t2 = high_resolution_clock::now();
+  //auto t2 = high_resolution_clock::now();
   for(size_t i = 0; i < parts.size(); i++) { groupElementTypes(parts[i]); }
-  auto t3 = high_resolution_clock::now();
+  //auto t3 = high_resolution_clock::now();
   addGeometry(); // This has to be done before any WriteGeometry because it
                  // stores geo data of each Print. Needed for the General .geo
                  // file.
-  auto t4 = high_resolution_clock::now();
+  //auto t4 = high_resolution_clock::now();
   addVariable();
-  auto t5 = high_resolution_clock::now();
+  //auto t5 = high_resolution_clock::now();
   // uncomment to get the Ensight ASCII format. Usefull for debugging.
   // writeGeometryASCII(filename);
   // writeVariableASCII(filename);
 
   writeVariableBinary(filename);
-  auto t6 = high_resolution_clock::now();
+  //auto t6 = high_resolution_clock::now();
   writeGeometryBinary(filename);
-  auto t7 = high_resolution_clock::now();
+  //auto t7 = high_resolution_clock::now();
 
   writeCaseFile(filename);
-  auto t8 = high_resolution_clock::now();
+  //auto t8 = high_resolution_clock::now();
 
-  duration<double, std::milli> ms_groupParts = t2 - t1;
-  duration<double, std::milli> ms_groupElementTypes = t3 - t2;
-  duration<double, std::milli> ms_addGeometry = t4 - t3;
-  duration<double, std::milli> ms_addVariable = t5 - t4;
-  duration<double, std::milli> ms_writeVariableBinary = t6 - t5;
-  duration<double, std::milli> ms_writeGeometryBinary = t7 - t6;
-  duration<double, std::milli> ms_writeCaseFile = t8 - t7;
+  //duration<double, std::milli> ms_groupParts = t2 - t1;
+  //duration<double, std::milli> ms_groupElementTypes = t3 - t2;
+  //duration<double, std::milli> ms_addGeometry = t4 - t3;
+  //duration<double, std::milli> ms_addVariable = t5 - t4;
+  //duration<double, std::milli> ms_writeVariableBinary = t6 - t5;
+  //duration<double, std::milli> ms_writeGeometryBinary = t7 - t6;
+  //duration<double, std::milli> ms_writeCaseFile = t8 - t7;
 
   /*Message::Info("ms_groupParts = %f", ms_groupParts);
   Message::Info("ms_groupElementTypes = %f", ms_groupElementTypes);
@@ -75,15 +77,12 @@ int EnsightExternalData::getNextTimeStep(std::string fname)
   // Check, if the text file could be opened and continue only, of OK
   // Message::Info("Is open %d", textFileStream.is_open());
   if(textFileStream.is_open()) {
-    // Message::Info("in file");
     std::string word;
     // look for line number of steps:
     std::string keyWord = "steps:";
     bool save_next_word = false;
     // read each word separated by spaces
     while(textFileStream >> word) {
-      // Message::Info("in while");
-      // Message::Info("The word is %s", word.c_str());
       if(save_next_word) {
         nextStep = std::stoi(word);
         textFileStream.close();
@@ -91,13 +90,10 @@ int EnsightExternalData::getNextTimeStep(std::string fname)
       }
       if(word == keyWord) {
         save_next_word = true;
-        // Message::Info("save_next_word = true");
       }
     }
   }
-  else {
-    // Message::Info("Starting new simulation");
-  }
+ 
   textFileStream.close();
   return nextStep;
 }
@@ -106,7 +102,6 @@ std::vector<double> EnsightExternalData::getTimeValues(std::string fname)
   std::ifstream textFileStream;
   std::vector<double> timeValues;
   double time;
-  int incrementStep = 1;
   textFileStream.open(fname.c_str());
   // Check, if the text file could be opened and continue only, of OK
   // Message::Info("Is open %d", textFileStream.is_open());
@@ -118,27 +113,22 @@ std::vector<double> EnsightExternalData::getTimeValues(std::string fname)
     bool save_next_word = false;
     // read each word separated by spaces
     while(textFileStream >> word) {
-      // Message::Info("in while");
-      // Message::Info("The word is %s \n", word.c_str());
+
       if(save_next_word) {
         time = std::stod(word);
         timeValues.push_back(time);
-        Message::Info("The word is %s", word.c_str());
-        Message::Info("The time is %lf", time);
+
       }
       if(word == keyWord || save_next_word) {
         save_next_word = true;
-        // Message::Info("save_next_word = true");
+
       }
     }
     textFileStream.close();
-    // Message::Info("timeValues[0] = %d", timeValues[0]);
-    Message::Info("timeValues.size() = %d", timeValues.size());
     return timeValues;
   }
   else {
-    // Message::Info("Starting new simulation");
-    // textFileStream.close();
+
     return timeValues;
   }
 }
@@ -157,11 +147,25 @@ void EnsightExternalData::addGeometry()
   // you should never simulate at freqency zero, in that case you would me more
   // interested in time
   if(!step_stored) {
-    if(data_sets[0].freq_value != 0) {
-      Ensight_Case.time_values.push_back(data_sets[0].freq_value);
+ if(data_sets[0].freq_value != 0 && strcmp(Current.Step_Type, "Freq") == 0) {
+      if(Ensight_Case.freq_values.empty()) {
+        Ensight_Case.freq_values.push_back(data_sets[0].freq_value);
+      }
+      // check if this freq is already stored
+      if(Ensight_Case.freq_values.back() != data_sets[0].freq_value) {
+        Ensight_Case.freq_values.push_back(data_sets[0].freq_value);
+      }
+
+      // Message::Info("data_sets[0].freq_value = %f", data_sets[0].freq_value);
     }
     else {
-      Ensight_Case.time_values.push_back(data_sets[0].time_value);
+      if(Ensight_Case.time_values.empty()) {
+        Ensight_Case.time_values.push_back(data_sets[0].time_value);
+      }
+      // check if this time is already stored
+      if(Ensight_Case.time_values.back() != data_sets[0].time_value) {
+        Ensight_Case.time_values.push_back(data_sets[0].time_value);
+      }
     }
   }
 }
@@ -196,27 +200,34 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
   resFile_filename = Fix_RelativePath(charBuffer, Name_Path);
   resFile_filename = fname + charBuffer;
 
-  int next_step_from_res = getNextTimeStep(resFile_filename);
-  Message::Info("getNextTimeStep(resFile_filename) = %d",
-                getNextTimeStep(resFile_filename));
+ 
 
   // ugly thing for counting freqStep
-  if(data_sets[0].freq_value != 0) {
-    step_for_naming = 0;
-    for(auto step : Ensight_Case.time_values) {
-      step_for_naming++;
-      if(step == data_sets[0].freq_value) { break; }
-    }
-    step_for_naming--;
-  }
-  else {
-    step_for_naming = data_sets[0].time_step - 1;
-  }
+  //if(data_sets[0].freq_value != 0) {
+  //  step_for_naming = 0;
+  //  for(auto step : Ensight_Case.time_values) {
+  //    step_for_naming++;
+  //    if(step == data_sets[0].freq_value) { break; }
+  //  }
+  //  step_for_naming--;
+  //}
+  //else {
+  //  step_for_naming = data_sets[0].time_step - 1;
+  //}
+  step_for_naming = Ensight_Case.time_values.size() - 1;
 
-  step_for_naming = getTimeValues(resFile_filename).size();
-  Message::Info("getTimeValues(resFile_filename).size() = %d",
-                getTimeValues(resFile_filename).size());
+  std::vector<double> timeValues = getTimeValues(resFile_filename);
 
+  // check if simulation starts from previous simulation
+  bool from_previous_sim = !strcmp(Current.From_Previous, "True");
+
+    if(!timeValues.empty() && from_previous_sim) {
+    step_for_naming = getNextTimeStep(resFile_filename);
+    if(Ensight_Case.time_values.back() == Current.Time) { step_for_naming--; }
+    Message::Info("From Previous");
+  }
+  
+ 
   snprintf(charBuffer, sizeof(charBuffer), "%sGlobal.%d.%05d.geo", "resFile", 0,
            step_for_naming);
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
@@ -304,7 +315,7 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   size_t last_time_step = 0; // Use always with LastTimeStep option!!!
   int step_for_naming;
   // ugly thing for counting freqStep
-  if(data_sets[0].freq_value != 0) {
+ /* if(data_sets[0].freq_value != 0) {
     step_for_naming = 0;
     for(auto step : Ensight_Case.time_values) {
       step_for_naming++;
@@ -314,7 +325,7 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   }
   else {
     step_for_naming = data_sets[0].time_step - 1;
-  }
+  }*/
   // define file path to find the next step, should be a resFile
   std::string resFile_filename;
   char resFile_charBuffer[512];
@@ -323,7 +334,15 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   resFile_filename = Fix_RelativePath(charBuffer, Name_Path);
   resFile_filename = fname + charBuffer;
 
-  step_for_naming = getTimeValues(resFile_filename).size();
+  std::vector<double> timeValues = getTimeValues(resFile_filename);
+  step_for_naming = Ensight_Case.time_values.size() - 1;
+  // check if simulation starts from previous simulation
+  bool from_previous_sim = !strcmp(Current.From_Previous, "True");
+  if(!timeValues.empty() && from_previous_sim) {
+    step_for_naming = getNextTimeStep(resFile_filename);
+    if(Ensight_Case.time_values.back() == Current.Time) { step_for_naming--; }
+    Message::Info("From Previous");
+  }
   // UNCOMMENT THIS FOR DEBUGGING, THIS WRITES A .GEO FILE ONLY FOR THE CURRENT
   // POSTOPERATION int step_for_naming;
 
@@ -782,11 +801,11 @@ void EnsightExternalData::writeCaseFile(std::string fname)
             Ensight_Case.postNames[var]);
   }
   // add last timevalue if it is not repeated before counting steps
-  if(timeValues.size() != 0) {
+ /* if(timeValues.size() != 0) {
     if(timeValues.back() < Ensight_Case.time_values.back()) {
       timeValues.push_back(Ensight_Case.time_values.back());
     }
-  }
+  }*/
 
   fprintf(fd, "\nTIME \ntime set: 1 \nnumber of steps: %lld\n",
           timeValues.size());
@@ -803,12 +822,12 @@ void EnsightExternalData::writeCaseFile(std::string fname)
 
   // reading previous file, write previous time steps
   for(double time : timeValues) {
-    fprintf(fd, "%lf\n", static_cast<float>(time));
+    fprintf(fd, "%lf\n", time);
   }
-
   // If there is no time values, we use old approach.
   if(timeValues.size() != 0) {
-    if(timeValues.back() < Ensight_Case.time_values.back()) {
+    // check if this time is already stored and if it is a next step
+    if(timeValues.back() < Ensight_Case.time_values.back() - 0.0001 ) {
       fprintf(fd, "%lf\n", Ensight_Case.time_values.back());
     }
   }
@@ -818,7 +837,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
       double time_step_aux = Ensight_Case.time_values[time_step];
       fprintf(fd, "%lf\n", time_step_aux);
     }
-  }
+  } 
   fclose(fd);
 }
 

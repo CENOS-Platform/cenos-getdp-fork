@@ -14,3 +14,6 @@ void Pos_PrintExternal(struct PostProcessing    *      PostProcessing_P,
 			struct QuantityStorage   *QuantityStorage_P0,
 			struct PostSubOperation  *PSO_P);
 
+void Pos_PrintExternalStepType(struct PostSubOperation *PSO_P);
+
+void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P);
