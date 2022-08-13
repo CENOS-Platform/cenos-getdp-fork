@@ -52,7 +52,7 @@ public:
 
   void groupParts();
   void groupElementTypes(elementsInPart &el_part);
-  void addGeometry();
+  void addTime();
   void addVariable();
 
   void WriteStringToFile(const char *cstring, FILE *file);

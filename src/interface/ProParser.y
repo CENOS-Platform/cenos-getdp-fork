@@ -7463,13 +7463,10 @@ PostSubOperation :
       PostSubOperation_S.PostQuantityIndex[0] = -1;
     }
 
-  | tPrintExternal_FromPrevious '[' CharExpr PrintOptions ']' tEND
+  | tPrintExternal_FromPrevious '[' tFile CharExpr ']' tEND
     {
       PostSubOperation_S.Type = POP_PRINTEXTERNAL_FROM_PREVIOUS;
-      PostSubOperation_S.Case.Expression.String = $3;
-      PostSubOperation_S.Case.Expression.String2 = NULL;
-      PostSubOperation_S.Case.Expression.Expressions = 0;
-      PostSubOperation_S.PostQuantityIndex[0] = -1;
+      PostSubOperation_S.FileIn = $4;
     }
 
   | tPrintGroup '[' GroupRHS

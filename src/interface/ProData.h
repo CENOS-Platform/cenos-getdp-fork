@@ -1521,7 +1521,6 @@ struct EnsightCase {
   std::vector<int> valueTypes;
   std::vector<std::vector<double> > nodes_coordinates_all;
   std::vector<double> time_values; // stores time_values for .case file writting
-  std::vector<double> freq_values; // stores time_values for .case file writting
   std::vector<elementsInPart>
     parts; // stores the parts for the current variable field
   std::unordered_map<
@@ -1531,7 +1530,8 @@ struct EnsightCase {
           // second int is the node, vector double is the data
   std::unordered_map<int, char *> region_name_map;
   char * from_previous;
-
+  bool From_Previous;
+  int start_index = 0;
 };
 
 struct PostOperation {
@@ -1577,6 +1577,7 @@ struct PostSubOperation {
   double Target;
   char *ValueName, *Label;
   char *FileOut;
+  char *FileIn;
   char *PartName;
   char *SetFrequencyScale;
   List_T *TimeStep_L, *Value_L, *Iso_L, *Frequency_L;
