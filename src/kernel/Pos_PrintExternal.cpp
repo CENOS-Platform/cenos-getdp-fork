@@ -13,10 +13,13 @@
 #include <type_traits>
 #include "VTUExternalData.h"
 #include "EnsightExternalData.h"
+#include <fstream>  
 
 extern struct Problem Problem_S;
 extern struct CurrentData Current;
 extern char *Name_Path;
+extern struct EnsightCase Ensight_Case;
+
 /* ------------------------------------------------------------------------ */
 /*  P o s _ P r i n t V T U                                       */
 /* ------------------------------------------------------------------------ */
@@ -117,8 +120,12 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     double frequencyScale;
     sscanf(PSO_P->SetFrequencyScale, "%lf", &frequencyScale);
     //Message::Info("------ frequencyMultiplier = %lf", SetFrequencyScale);
-    tdata.freq_value = Current.Frequency / frequencyScale;
-    
+	if (strcmp(Current.Step_Type, "Freq") == 0)
+		tdata.freq_value = Current.Frequency / frequencyScale;
+	else
+		tdata.freq_value = 0;
+	
+    std::cout << tdata.freq_value << "tdata.freq_value " << std::endl;
     for(int ipq = 0; ipq < List_Nbr(PSO_P->PointQuantities); ipq++) {
       PostQuantity_P = (struct PostQuantity *)List_Pointer(
         PostProcessing_P->PostQuantity,
@@ -302,13 +309,61 @@ void Pos_PrintExternalStepType(struct PostSubOperation *PSO_P)
 
 void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P)
 {
-  int NbrTimeStep, iTime;
-  struct Value Value;
-  char *str = PSO_P->Case.Expression.String;
-  char *str2 = PSO_P->Case.Expression.String2;
-  List_T *expr = PSO_P->Case.Expression.Expressions;
+  // if multiple From Previous command is called again, check if there already
+  // are values before adding to Ensight Case
+  // This IF ensures that start index and time values are read only once
+  if (!Ensight_Case.time_values.empty()) 
+     return;	  
 
-  if((!str || !strlen(str)) && (!str2 || !strlen(str2)) && !List_Nbr(expr))
-    return; // no options to set
-  Current.From_Previous = str;
+  if (!PSO_P->FileIn)
+  {
+      Ensight_Case.From_Previous = false;
+	  return;
+  }
+
+  std::string filename = Fix_RelativePath(PSO_P->FileIn, Name_Path);
+
+  Ensight_Case.From_Previous = true;
+
+  // now read file and find next step
+  std::ifstream textFileStream;
+  int next_step = 0;
+  double time;
+  std::vector<double> time_values;
+  textFileStream.open(filename.c_str());
+  // Check, if the text file could be opened and continue only, of OK
+  // Message::Info("Is open %d", textFileStream.is_open());
+  if(textFileStream.is_open()) {
+    std::string word;
+    // look for line number of steps:
+    std::string steps_key = "steps:";
+
+	// look for line number of values:
+    std::string values_key = "values:";
+
+    // read each word separated by spaces
+    while(textFileStream >> word) {
+		std::cout << word << std::endl;;
+      if(word == steps_key) {
+        textFileStream >> next_step;
+      }
+
+      if(word == values_key) {
+		  // in ensight format nr of steps is
+		  // before time data
+		  for (int i = 0; i< next_step; i++)
+		  {
+			  textFileStream >> time;
+			  time_values.push_back(time);
+		  }
+      }
+    }
+  }
+
+  Ensight_Case.time_values = time_values;
+  Ensight_Case.start_index = next_step;
+
+  textFileStream.close();
+  std::cout << "Ensight_Case.start_index " << next_step << std::endl;
+  
 }
