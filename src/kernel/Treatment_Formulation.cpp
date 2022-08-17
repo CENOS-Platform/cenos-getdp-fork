@@ -17,14 +17,14 @@
 #include "ExtendedGroup.h"
 #include "Message.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 
 
 extern int TreatmentStatus;
 
-extern List_T *GeoData_L;
+extern thread_local List_T *GeoData_L;
 
 /* ------------------------------------------------------------------------ */
 /*  C a l _ F e m G l o b a l E q u a t i o n                               */

@@ -16,21 +16,188 @@
 #include "SolvingAnalyse.h"
 #include "Message.h"
 #include "MallocUtils.h"
+#include "CopyStructures.h"
 
 extern thread_local struct CurrentData Current;
 extern struct CurrentData* Current_ptr;
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
+extern struct Problem* Problem_S_ptr;
 extern bool copy_in_progress;
+extern bool is_running;
+
+extern thread_local List_T *GeoData_L;
+//extern List_T * GeoData_L_ptr;
+
 /* ------------------------------------------------------------------------ */
 /*  O p e r a t i o n _ P o s t O p e r a t i o n                           */
 /* ------------------------------------------------------------------------ */
 #include <iostream>
+#include <thread>
+#include <chrono>
+
 void Operation_PostOperation(Resolution *Resolution_P, DofData *DofData_P0,
                              GeoData *GeoData_P0, List_T *PostOperationNames)
 {
-  Current = *Current_ptr;
+
+try {
+
+  is_running = true;
+  copy_in_progress = true;
+
+
+  Problem_S = *Problem_S_ptr;
+//  GeoData_L = GeoData_L_ptr;
+
+  //orizhinal <- will not copy data :(
+ /*
+
+	Current = *Current_ptr;
+
+
+    //lets nullify some of the data
+    //to see if we can survive w/o it !
+
+
+	Current.GeoData = nullptr;		//<-- do NOT need !!!
+	Current.DofData = nullptr;		//<-- do NOT need !!!
+        Current.Element = nullptr;		//<-- do NOT need !!!
+	Current.ElementSource = nullptr;		//<-- do NOT need !!!
+
+
+        //Current.DefineSystem_P = nullptr;	// <- MUST HAVE => [DONE] !!!
+	//Current.DofData_P0 = nullptr; 	//<- MUST HAVE
+        //Current.DofData_P0->Solutions = nullptr; // <- MUST HAVE
+	//Current.DofData_P0->Pulsation = nullptr; //<- MUST HAVE
+	//Current.DofData_P0->Val_Pulsation = nullptr; //<- MUST HAVE
+	//Current.DofData_P0->DofList = nullptr; // <- MUST HAVE
+
+
+	Current.DofData_P0->DofTree = nullptr;
+	Current.DofData_P0->DummyDof = nullptr;
+	Current.DofData_P0->CurrentSolution = nullptr;
+	Current.DofData_P0->Save_CurrentSolution = nullptr;
+
+
+	Current.DofData_P0->CorrectionSolutions.Flag = -1;
+	Current.DofData_P0->CorrectionSolutions.Save_FullSolutions = nullptr;
+	Current.DofData_P0->CorrectionSolutions.Save_CurrentFullSolution = nullptr;
+	Current.DofData_P0->CorrectionSolutions.AllSolutions = nullptr;
+*/
+
+/*	
+	Current.DofData_P0->OnlyTheseMatrices = nullptr;
+
+
+	gMatrix f;
+        Current.DofData_P0->A = f;
+        
+        gVector f1;
+	Current.DofData_P0->b = f1;
+	
+	gSolver f2;
+	
+	Current.DofData_P0->Solver = f2;
+
+	// Flag_Init[0] == 2
+	Current.DofData_P0->Jac = f;
+	Current.DofData_P0->res = f1;
+	Current.DofData_P0->dx = f1;
+
+	// Flag_Init[0] == 3
+	Current.DofData_P0->df = f1;
+
+	// Flag_Init[1,2,3,4,5,6,7] == 1
+	Current.DofData_P0->M1 = f;
+	Current.DofData_P0->M2 = f;
+	Current.DofData_P0->M3 = f;
+	Current.DofData_P0->M4 = f;
+	Current.DofData_P0->M5 = f;
+	Current.DofData_P0->M6 = f;
+	Current.DofData_P0->M7 = f;
+  
+  
+	Current.DofData_P0->m1 = f1;
+	Current.DofData_P0->m2 = f1; 
+	Current.DofData_P0->m3 = f1;
+	Current.DofData_P0->m4 = f1; 
+	Current.DofData_P0->m5 = f1; 
+	Current.DofData_P0->m6 = f1; 
+	Current.DofData_P0->m7 = f1;
+
+
+
+	Current.DofData_P0->m1s = nullptr;
+	Current.DofData_P0->m2s = nullptr; 
+	Current.DofData_P0->m3s = nullptr; 
+	Current.DofData_P0->m4s = nullptr; 
+	Current.DofData_P0->m5s = nullptr; 
+	Current.DofData_P0->m6s = nullptr; 
+	Current.DofData_P0->m7s = nullptr;
+
+	
+	
+	// Flag_Only and Flag_InitOnly[0,1,2]
+	Current.DofData_P0->A1 = f;
+	Current.DofData_P0->A2 = f;
+	Current.DofData_P0->A3 = f;
+	Current.DofData_P0->b1 = f1;
+	Current.DofData_P0->b2 = f1;
+	Current.DofData_P0->b3 = f1;
+
+        // Flag_ListOfRHS
+        std::vector<gVector> f3;
+	Current.DofData_P0->ListOfRHS = f3;
+
+
+	Current.DofData_P0->A_MH_moving = f;
+	Current.DofData_P0->b_MH_moving = f1;
+
+
+
+
+
+
+	std::vector<int> f4;
+	Current.DofData_P0->NonLocalEquations =f4;
+
+*/
+
+
+
+
+
+
+  //Correct data structure copy code <- :)
+    Current = *CopyCurrentData(Current_ptr);
+
+
+    DofData * DofData_P00 = CopyDofData(DofData_P0);
+    DofData_P0 = DofData_P00;
+
+    GeoData * GeoData_P00 = CopyGeoData(GeoData_P0);
+    GeoData_P0 = GeoData_P00;
+
+
+    //GeoData * GeoData_LL = CopyGeoData((struct GeoData *)List_Pointer(GeoData_L, 0));
+    //GeoData_L = nullptr;
+
+
+    //Resolution_P = nullptr;
+    //PostOperationNames = nullptr;
+
+    Resolution *Resolution_P00 = Resolution_P;
+    List_T *PostOperationNames00 = PostOperationNames;
+
+    Resolution_P = Resolution_P00;
+    PostOperationNames = PostOperationNames00;
+
 
   copy_in_progress = false;
+      std::this_thread::sleep_for(std::chrono::milliseconds(30000));
+
+
+
+
   double Save_Time, Save_TimeImag, Save_TimeStep;
   char *str;
   int i, j, k;
@@ -43,7 +210,8 @@ void Operation_PostOperation(Resolution *Resolution_P, DofData *DofData_P0,
   Save_TimeStep = Current.TimeStep;
   Save_Element = Current.Element;
 
-  for(int i = 0; i < List_Nbr(PostOperationNames); i++) {
+  for(int i = 0; i < List_Nbr(PostOperationNames); i++) 
+  {
     str = *(char **)List_Pointer(PostOperationNames, i);
     if((j = List_ISearchSeq(Problem_S.PostOperation, str,
                             fcmp_PostOperation_Name)) < 0) {
@@ -76,6 +244,20 @@ void Operation_PostOperation(Resolution *Resolution_P, DofData *DofData_P0,
   }
   Current.Element = Save_Element;
   Current.PostOpDataIndex = -1;
+  
+  
+  
+
+  
+is_running = false;
+
+}
+catch (const std::exception& e) // reference to the base of a polymorphic object
+{
+    std::cout << "BUCIJAA [" << e.what() << "]"; // information from length_error printed
+}
+
+
 }
 
 /* ------------------------------------------------------------------------ */

@@ -27,6 +27,9 @@
 #include "OS.h"
 #include "Message.h"
 
+
+
+
 #if defined(HAVE_GMSH)
 #include <gmsh/GmshGlobal.h>
 #include <gmsh/PView.h>
@@ -36,11 +39,19 @@
 #define GOLDENRATIO 1.6180339887498948482
 
 #include <thread>
-extern struct Problem Problem_S;
+#include <iostream>
+
+#include <chrono>
+
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 extern struct CurrentData* Current_ptr;
+extern struct Problem* Problem_S_ptr;
 extern bool copy_in_progress;
-extern std::unique_ptr<std::thread> thread_ptr;
+extern bool is_running;
+//extern std::unique_ptr<std::thread> thread_ptr;
+extern std::thread* thread_ptr;
+
 
 extern int TreatmentStatus;
 
@@ -51,7 +62,10 @@ extern int Flag_BIN, Flag_SPLIT;
 extern char *Name_Generic, *Name_Path;
 extern char *Name_MshFile, *Name_ResFile[NBR_MAX_RES];
 
-extern List_T *GeoData_L;
+extern thread_local List_T *GeoData_L;
+//extern List_T * GeoData_L_ptr;
+
+
 
 static int Flag_IterativeLoop = 0; /* Attention: phase de test */
 
@@ -3508,22 +3522,102 @@ void Treatment_Operation(struct Resolution *Resolution_P, List_T *Operation_L,
     case OPERATION_POSTOPERATION:
       Message::Info("PostOperation");
 	  Current_ptr = &Current;
+	  Problem_S_ptr = &Problem_S;
+	  //GeoData_L_ptr = GeoData_L;
 	  copy_in_progress = true;
-	  if (thread_ptr != nullptr)
-            thread_ptr->join();
+	  
+	  //if (thread_ptr != nullptr)
+            //thread_ptr->join();
 		 
-	  thread_ptr = std::unique_ptr<std::thread>(
-			new std::thread(
-			Operation_PostOperation,
-			Resolution_P,
-			DofData_P0,
-			GeoData_P0,
-			Operation_P->Case.PostOperation.PostOperations));
+	  //thread_ptr = std::unique_ptr<std::thread>(
+	//		new std::thread(
+	//		Operation_PostOperation,
+	//		Resolution_P,
+	//		DofData_P0,
+	//		GeoData_P0,
+	//		Operation_P->Case.PostOperation.PostOperations));
 
 //thread_ptr->join();
-   //   Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
-   //                           Operation_P->Case.PostOperation.PostOperations);
-	  while(copy_in_progress) {};
+//      Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
+//                              Operation_P->Case.PostOperation.PostOperations);
+	  //while(copy_in_progress) {};
+
+	  
+	  
+	  //execute write_results in thread
+        if (is_running)
+        {
+            Message::Info("THR_PTR != NULL");
+            thread_ptr->join();
+        }
+        else
+        {
+            Message::Info("THR_PTR == NULL");
+
+            if (thread_ptr != nullptr)
+            {
+        	Message::Info("ptr not null");
+                thread_ptr->join();
+                Message::Info("del * ptr");
+                delete thread_ptr;
+                thread_ptr = nullptr;
+                Message::Info("thr * ptr clean.");
+            }
+        }
+	
+	
+	
+	//GeoData_L = nullptr;
+
+	//NEW thread
+        thread_ptr = new std::thread(Operation_PostOperation,
+				    Resolution_P,
+				    DofData_P0,
+				    GeoData_P0,
+				    Operation_P->Case.PostOperation.PostOperations);
+
+
+	
+	//thread_ptr->join();
+        while (copy_in_progress)    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        Message::Info("THR Created, Continuing EXEC ...");
+        
+        
+        
+        
+	//Resolution_P = nullptr;
+	//DofData_P0 = nullptr;
+	//GeoData_P0 = nullptr;
+	//Operation_P->Case.PostOperation.PostOperations = nullptr;
+
+        
+        
+        
+        //extern thread_local struct CurrentData Current;
+	//extern struct CurrentData* Current_ptr;
+
+
+	//thread_ptr->join();
+
+        //exit(1);
+        
+	//std::this_thread::sleep_for(std::chrono::milliseconds(50000));
+
+        //exit(1);
+
+
+        //Message::Info("del * ptr");
+        //delete thread_ptr;
+	
+	  
+	  
+	//OLD blocking
+	//Operation_PostOperation(Resolution_P, DofData_P0, GeoData_P0,
+        //                      Operation_P->Case.PostOperation.PostOperations);
+	  
+	  
+	Message::Info("@HERE");
+	  
       break;
 
       /*  -->  D e l e t e F i l e  */

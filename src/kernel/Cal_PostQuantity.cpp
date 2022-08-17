@@ -17,7 +17,7 @@
 #include "MallocUtils.h"
 #include "Message.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 /* ------------------------------------------------------------------------ */
@@ -148,6 +148,7 @@ void Pos_LocalOrIntegralQuantity(struct PostQuantity *PostQuantity_P,
     Cal_WholeQuantity(Current.Element = Element, QuantityStorage_P0,
                       PostQuantityTerm_P->WholeQuantity, Current.u = u,
                       Current.v = v, Current.w = w, -1, -1, &TermValue);
+                      
   }
 
   /* integral evaluation over the element */

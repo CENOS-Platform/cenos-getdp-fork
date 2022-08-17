@@ -29,7 +29,7 @@
 #define SQU(a) ((a) * (a))
 #define TWO_PI 6.2831853071795865
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 extern int Flag_BIN, Flag_GMSH_VERSION;

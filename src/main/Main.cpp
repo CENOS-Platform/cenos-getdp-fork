@@ -3,12 +3,14 @@
 // See the LICENSE.txt file for license information. Please report all
 // issues on https://gitlab.onelab.info/getdp/getdp/issues.
 
-#include <stdio.h>
+
 #include "MainKernel.h"
 #include "Message.h"
 #include "GetDPConfig.h"
 #include "ProData.h"
 #include "getdp.h"
+//#include "fork.c"
+#include <iostream>
 
 #if defined(WIN32) && !defined(__CYGWIN__)
 
@@ -23,8 +25,10 @@
 #include <memory>
 #include <thread>
 
-std::unique_ptr<std::thread> thread_ptr;
-bool copy_in_progress = false;
+
+//std::unique_ptr<std::thread> thread_ptr;
+std::thread* thread_ptr = nullptr;
+bool copy_in_progress = false, is_running = false;
 
 static char *toUTF8(wchar_t *src)
 {
@@ -42,6 +46,18 @@ static char *toUTF8(wchar_t *src)
 
 int wmain(int argc, wchar_t *wargv[], wchar_t *envp[])
 {
+
+
+//std::cout << "Before Mf()fork [1]" << std::endl;
+
+//fork();
+
+
+//std::cout << "AFTERRRrrrr Mf()fork [1]" << std::endl;
+
+
+
+
   char **argv = new char *[argc + 1];
   for(int i = 0; i < argc; i++) argv[i] = toUTF8(wargv[i]);
   argv[argc] = nullptr;
@@ -50,6 +66,17 @@ int wmain(int argc, wchar_t *wargv[], wchar_t *envp[])
 
 int main(int argc, char **argv)
 {
+
+
+
+//std::cout << "Before Mf()fork [0]" << std::endl;
+
+//fork();
+
+//std::cout << "AFTERRRrrrr Mf()fork  [0]" << std::endl;
+
+
+
 
 #endif
 
@@ -83,8 +110,17 @@ int main(int argc, char **argv)
   GetDP(args);
 #endif
 
-  if (thread_ptr != nullptr)
-	  thread_ptr->join();
+//  if (thread_ptr != nullptr)
+//	  thread_ptr->join();
+
+    if (is_running)
+    {
+        printf("Last loop rejoin ...\n");
+        thread_ptr->join();
+    }
+
+
+	printf("Last loop DONE.\n");
   
   return 0;
 }

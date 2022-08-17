@@ -12,7 +12,7 @@
 
 #define SQU(a) ((a) * (a))
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern struct GeoData *CurrentGeoData;
 
 int fcmp_NXE(const void *a, const void *b)

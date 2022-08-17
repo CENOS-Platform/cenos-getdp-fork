@@ -15,7 +15,7 @@
 #include "Pos_FemInterpolation.h"
 #endif
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 

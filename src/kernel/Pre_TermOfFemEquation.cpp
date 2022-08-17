@@ -10,7 +10,7 @@
 #include "BF.h"
 #include "Message.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 

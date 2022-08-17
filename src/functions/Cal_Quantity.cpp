@@ -25,7 +25,7 @@
 #include "Pos_Format.h"
 #endif
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 
@@ -381,6 +381,10 @@ void Cal_WholeQuantity(struct Element *Element,
       Save_CurrentElement = Current.Element;
       if(i_WQ != DofIndexInWholeQuantity) {
 #if defined(HAVE_KERNEL)
+
+
+		//Message::Info( "INFO [%d => %f | %d]",Index, Stack[0][Index].Val, Stack[0][Index].Type);
+
         Pos_FemInterpolation(
           Element, QuantityStorage_P0,
           QuantityStorage_P0 + WholeQuantity_P->Case.OperatorAndQuantity.Index,

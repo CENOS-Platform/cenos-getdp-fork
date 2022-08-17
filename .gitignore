@@ -16,3 +16,10 @@ benchmarks_kst
 *.msh
 *~
 *#
+/.vs/CMake Overview
+/.vs/getdp/v16/.suo
+/.vs/ProjectSettings.json
+/.vs/slnx.sqlite
+/.vs/VSWorkspaceState.json
+/.vscode/launch.json
+/CMakeLists.txt

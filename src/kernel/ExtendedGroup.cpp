@@ -14,7 +14,7 @@
 #include "Get_Geometry.h"
 #include "Message.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 
 int fcmp_int2(const void *a, const void *b)
 {

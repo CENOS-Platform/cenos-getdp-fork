@@ -32,7 +32,7 @@
 
 #define TWO_PI 6.2831853071795865
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 
@@ -91,39 +91,43 @@ void Pos_FemFormulation(struct Formulation *Formulation_P,
   case POP_PRINT:
     switch(PostSubOperation_P->SubType) {
     case PRINT_ONREGION:
-      Pos_PrintOnRegion(NCPQ_P, CPQ_P, Order,
-                        DefineQuantity_P0, // FIXME: frequency is set to zero
-                        QuantityStorage_P0, PostSubOperation_P);
+      //Pos_PrintOnRegion(NCPQ_P, CPQ_P, Order,
+        //                DefineQuantity_P0, // FIXME: frequency is set to zero
+        //                QuantityStorage_P0, PostSubOperation_P);
       break;
     case PRINT_ONELEMENTSOF:
     case PRINT_ONGRID:
-      Pos_PrintOnElementsOf(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
-                            QuantityStorage_P0, PostSubOperation_P);
+      //Pos_PrintOnElementsOf(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
+        //                    QuantityStorage_P0, PostSubOperation_P);
       break;
     case PRINT_ONSECTION_1D:
     case PRINT_ONSECTION_2D:
-      Pos_PrintOnSection(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
-                         QuantityStorage_P0, PostSubOperation_P);
+      //Pos_PrintOnSection(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
+        //                 QuantityStorage_P0, PostSubOperation_P);
       break;
     case PRINT_ONGRID_0D:
     case PRINT_ONGRID_1D:
     case PRINT_ONGRID_2D:
     case PRINT_ONGRID_3D:
     case PRINT_ONGRID_PARAM:
-      Pos_PrintOnGrid(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
-                      QuantityStorage_P0, PostSubOperation_P);
+      //Pos_PrintOnGrid(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
+        //              QuantityStorage_P0, PostSubOperation_P);
       break;
     case PRINT_WITHARGUMENT:
-      Pos_PrintWithArgument(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
-                            QuantityStorage_P0, PostSubOperation_P);
+      //Pos_PrintWithArgument(NCPQ_P, CPQ_P, Order, DefineQuantity_P0,
+        //                    QuantityStorage_P0, PostSubOperation_P);
       break;
     default: Message::Error("Unknown Operation type for Print"); break;
     }
     break;
 
-  case POP_EXPRESSION: Pos_PrintExpression(PostSubOperation_P); break;
+  case POP_EXPRESSION: 
+  //Pos_PrintExpression(PostSubOperation_P);
+   break;
 
-  case POP_GROUP: Pos_PrintGroup(PostSubOperation_P); break;
+  case POP_GROUP: 
+  //Pos_PrintGroup(PostSubOperation_P); 
+  break;
 
   default: Message::Error("Unknown PostSubOperation type"); break;
   }
@@ -174,8 +178,9 @@ void Pos_FemFormulation_MultipleFields(
 
   QuantityStorage_P0 =
     (struct QuantityStorage *)List_Pointer(QuantityStorage_L, 0);
-  Pos_PrintExternal(PostProcessing_P, Order, DefineQuantity_P0,
-                    QuantityStorage_P0, PostSubOperation_P);
+
+  //Pos_PrintExternal(PostProcessing_P, Order, DefineQuantity_P0,
+    //                QuantityStorage_P0, PostSubOperation_P);
 
   List_Delete(QuantityStorage_L);
 }
@@ -586,6 +591,7 @@ void Pos_Formulation(struct Formulation *Formulation_P,
                          PostSubOperation_P);
     }
     else {
+    
       Pos_FemFormulation_MultipleFields(Formulation_P, PostProcessing_P, Order,
                                         PostSubOperation_P);
     }

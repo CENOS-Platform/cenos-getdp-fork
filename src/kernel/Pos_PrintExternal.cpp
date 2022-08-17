@@ -14,7 +14,7 @@
 #include "VTUExternalData.h"
 #include "EnsightExternalData.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 extern char *Name_Path;
 /* ------------------------------------------------------------------------ */
@@ -159,6 +159,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
         Element.Type = Element.GeoElement->Type;
         Current.Region = Element.Region = Element.GeoElement->Region;
         Get_NodesCoordinatesOfElement(&Element);
+        //Message::Info("PE->NbrNodes=[%d]", PE->NbrNodes);
         for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
           Current.x = PE->x[iNode];
           Current.y = PE->y[iNode];

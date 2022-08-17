@@ -22,12 +22,13 @@
 
 // Global problem structure: this is the only problem structure that
 // is instanciated, and it is filled by the parser
-struct Problem Problem_S;
+thread_local struct Problem Problem_S;
 
 // Global run-time current data: this is the only current data
 // structure that is instantiated
 thread_local struct CurrentData Current;
 struct CurrentData* Current_ptr;
+struct Problem* Problem_S_ptr;
 
 // Global ensight variables to create the case file for ensight format
 struct EnsightCase Ensight_Case;

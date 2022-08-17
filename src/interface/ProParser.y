@@ -35,7 +35,7 @@
 #endif
 
 // Global problem structure filled by the parser
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 
 // Global parser variables
 std::string getdp_yyname;

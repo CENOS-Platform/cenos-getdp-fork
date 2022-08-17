@@ -14,10 +14,10 @@
 #include "Pos_Search.h"
 #include "Message.h"
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
-extern List_T *GeoData_L;
+extern thread_local List_T *GeoData_L;
 
 /* ------------------------------------------------------------------------ */
 /*  P o s _ F e m I n t e r p o l a t i o n                                 */
@@ -31,6 +31,11 @@ void Pos_FemInterpolation(struct Element *Element,
                           double w, double x, double y, double z, double Val[],
                           int *Type_Value, int Flag_ChangeOfCoordinates)
 {
+
+  if (GeoData_L != nullptr)
+    Message::Info("geoData_L NOT nullptr");
+
+
   void (*xFunctionBF[NBR_MAX_BASISFUNCTIONS])(struct Element *, int, double,
                                               double, double, double[]);
   void (*xChangeOfCoordinates)() = 0;
@@ -123,6 +128,9 @@ void Pos_FemInterpolation(struct Element *Element,
   if(Type_DefineQuantity == LOCALQUANTITY) {
     if(TheElement_P->Num != NO_ELEMENT) {
       Nbr_Dof = QuantityStorage_P->NbrElementaryBasisFunction;
+      
+      //Message::Info("Nbr_Dof [%d]", Nbr_Dof);
+      
       Get_FunctionValue(Nbr_Dof, (void (**)())xFunctionBF, Type_Operator,
                         QuantityStorage_P, &Type_Form);
       xChangeOfCoordinates = (void (*)())Get_ChangeOfCoordinates(

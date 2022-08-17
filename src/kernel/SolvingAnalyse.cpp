@@ -22,7 +22,7 @@
 
 #define TWO_PI 6.2831853071795865
 
-extern struct Problem Problem_S;
+extern thread_local struct Problem Problem_S;
 extern thread_local struct CurrentData Current;
 
 extern int Flag_PRE, Flag_CAL, Flag_POS;
@@ -34,7 +34,9 @@ extern char *Name_PostOperation[NBR_MAX_POS];
 extern char *Name_MshFile, *Name_ResFile[NBR_MAX_RES], *Name_AdaptFile;
 
 int TreatmentStatus = 0;
-List_T *GeoData_L = 0, *PreResolutionIndex_L = 0;
+thread_local List_T *GeoData_L = 0;
+
+List_T  *PreResolutionIndex_L = 0;
 
 /* ------------------------------------------------------------------------ */
 /*  I n i t _ D o f D a t a I n F u n c t i o n S p a c e                   */
@@ -230,6 +232,7 @@ void Treatment_PostOperation(struct Resolution *Resolution_P,
       PostOperation_P->PostSubOperation, i_POP);
     Message::Info("PostOperation '%s' %d/%d", PostOperation_P->Name, i_POP + 1,
                   Nbr_PostSubOperation);
+                  //continue;//Runs OK !
     Pos_Formulation(Formulation_P, PostProcessing_P, PostSubOperation_P);
   }
 
