@@ -106,7 +106,10 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     Pos_InitAllSolutions(PSO_P->TimeStep_L, iTime);
 
     TimeStepData tdata;
-    tdata.time_step = Current.TimeStep;
+	if (Current.TypeTime == TIME_STATIC)	
+		tdata.time_step = 1;
+	else
+		tdata.time_step = Current.TimeStep;
     tdata.time_value = Current.Time;
     
     /*Message::Info("------ PSO_P->SetFrequencyScale  ");
