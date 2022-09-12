@@ -128,7 +128,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
 	else
 		tdata.freq_value = 0;
 	
-    std::cout << tdata.freq_value << "tdata.freq_value " << std::endl;
+  
     for(int ipq = 0; ipq < List_Nbr(PSO_P->PointQuantities); ipq++) {
       PostQuantity_P = (struct PostQuantity *)List_Pointer(
         PostProcessing_P->PostQuantity,

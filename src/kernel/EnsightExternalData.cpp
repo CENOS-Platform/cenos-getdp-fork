@@ -70,7 +70,6 @@ void EnsightExternalData::addTime()
 			Ensight_Case.time_values.end(), 
 			double_comp(time_val, 1E-5)) != 
 			Ensight_Case.time_values.end() ) ;
-  std::cout << "AGGGZZAAA " << time_val << "    " << found  << " " << Ensight_Case.time_values.size() << std::endl;
 
   // do not add time values if they are already there
   if (found)
@@ -118,7 +117,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
                    current_filename.c_str(), strerror(errno));
     return;
   }
-     std::cout << current_filename << " filename " << std::endl;
+     
 
 
   WriteStringToFile("C Binary", fd);
