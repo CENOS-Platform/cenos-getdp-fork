@@ -21,6 +21,7 @@
 #include "MallocUtils.h"
 #include "Message.h"
 #include "OS.h"
+#include<iostream>
 
 #if defined(HAVE_SLEPC)
 #include <slepc.h>
@@ -1488,6 +1489,7 @@ static void _solve(gMatrix *A, gVector *B, gSolver *Solver, gVector *X,
   _try(KSPGetType(Solver->ksp[kspIndex], &ksptype));
   const char *pctype = "";
   _try(PCGetType(pc, &pctype));
+  Message::Info("pctype: %s", pctype);
 #else
   const KSPType ksptype;
   _try(KSPGetType(Solver->ksp[kspIndex], &ksptype));
