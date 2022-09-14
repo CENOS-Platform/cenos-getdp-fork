@@ -47,8 +47,8 @@ void EnsightExternalData::write(std::string filename)
   addVariable();
 
   // uncomment to get the Ensight ASCII format. Usefull for debugging.
-  // writeGeometryASCII(filename);
-  // writeVariableASCII(filename);
+   writeGeometryASCII(filename);
+   writeVariableASCII(filename);
 
   writeVariableBinary(filename);
   writeGeometryBinary(filename);
@@ -134,7 +134,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
     std::string namePart = "part_" + std::to_string(i);
 
     WriteStringToFile("part", fd);
-    WriteIntToFile(Ensight_Case.parts[i].part, fd);
+    WriteIntToFile(Ensight_Case.parts[i].part +1 , fd);
     // WriteStringToFile(namePart.c_str(), fd);
     WriteStringToFile(Ensight_Case.region_name_map[Ensight_Case.parts[i].part],
                       fd);
@@ -219,7 +219,7 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
       WriteStringToFile(var.first, fd); // variable name
       for(auto part : var.second) {
         WriteStringToFile("part", fd);
-        WriteIntToFile(part.first, fd);
+        WriteIntToFile(part.first + 1, fd);
         WriteStringToFile("coordinates", fd);
         size_t point_size = part.second.size();
         size_t value_size = part.second[0].size();
@@ -302,7 +302,7 @@ void EnsightExternalData::writeGeometryASCII(std::string fname)
 
   for(size_t i = 0; i < Ensight_Case.parts.size(); i++) {
     fprintf(fd, "part\n");
-    fprintf(fd, "%d\n", Ensight_Case.parts[i].part);
+    fprintf(fd, "%d\n", Ensight_Case.parts[i].part + 1);
     fprintf(fd, "coordinates\n");
     fprintf(fd, "%lld\n", Ensight_Case.parts[i].nodes.size());
     for(auto node : Ensight_Case.parts[i].nodes) {
@@ -382,7 +382,7 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
     fprintf(fd, "\n");
     for(auto part : var.second) {
       fprintf(fd, "part\n");
-      fprintf(fd, "%d \n", part.first);
+      fprintf(fd, "%d \n", part.first +1);
       fprintf(fd, "coordinates\n");
       size_t point_size = part.second.size();
       size_t value_size = part.second[0].size();
