@@ -47,11 +47,11 @@ void EnsightExternalData::write(std::string filename)
   addVariable();
 
   // uncomment to get the Ensight ASCII format. Usefull for debugging.
-   writeGeometryASCII(filename);
+   //writeGeometryASCII(filename);
    //writeVariableASCII(filename);
 
   writeVariableBinary(filename);
-  //writeGeometryBinary(filename);
+  writeGeometryBinary(filename);
 
   writeCaseFile(filename);
 }
