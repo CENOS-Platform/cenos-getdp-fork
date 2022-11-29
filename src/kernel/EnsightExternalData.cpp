@@ -99,13 +99,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
   std::string current_filename;
   char charBuffer[512];
 
-  int time_step; 
-  if (strcmp(Current.Step_Type, "Freq") == 0)
-	  time_step = Ensight_Case.time_values.size();
-  else
-	  time_step = data_sets[0].time_step;
-
-  int step_for_naming = time_step- 1 + Ensight_Case.start_index;
+  int step_for_naming = Ensight_Case.time_values.size() - 1;
 
 
   snprintf(charBuffer, sizeof(charBuffer), "%sGlobal.%d.%05d.geo", "resFile", 0,
@@ -194,13 +188,8 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
   std::string current_filename;
   char charBuffer[512];
   size_t last_time_step = 0; // Use always with LastTimeStep option!!!
-  int time_step; 
-  if (strcmp(Current.Step_Type, "Freq") == 0)
-	  time_step = Ensight_Case.time_values.size();
-  else
-	  time_step = data_sets[0].time_step;
-  int step_for_naming = time_step - 1 + Ensight_Case.start_index;
-
+  
+  int step_for_naming = Ensight_Case.time_values.size() - 1;
 
   // write values for variable file , i.e field file
 
@@ -279,7 +268,7 @@ void EnsightExternalData::writeGeometryASCII(std::string fname)
   std::string current_filename;
   char charBuffer[512];
 
-  int step_for_naming = data_sets[0].time_step - 1 + Ensight_Case.start_index;
+  int step_for_naming = Ensight_Case.time_values.size() - 1;
 
   snprintf(charBuffer, sizeof(charBuffer), "%sGlobal.%d.%05d.geoASCII",
            "resFile", 0, step_for_naming);
@@ -360,7 +349,8 @@ void EnsightExternalData::writeVariableASCII(std::string fname)
   std::string current_filename;
   char charBuffer[512];
   size_t last_time_step = 0;
-  int step_for_naming = data_sets[0].time_step - 1 + Ensight_Case.start_index;
+  
+  int step_for_naming = Ensight_Case.time_values.size() - 1;
 
   // write .geo file
 
