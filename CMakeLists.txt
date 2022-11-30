@@ -5,6 +5,13 @@
 
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgfortran -lquadmath")
+set(CMAKE_EXE_LINKER_FLAGS "-static-libgfortran -lquadmath")
+
+
 # if CMAKE_BUILD_TYPE is specified use it; otherwise set the default
 # build type to "RelWithDebInfo" ("-O2 -g" with gcc) prior to calling
 # project()
@@ -70,7 +77,8 @@ set(GETDP_PATCH_VERSION 0)
 if(NOT GETDP_EXTRA_VERSION)
   set(GETDP_EXTRA_VERSION "")
 endif()
-set(GETDP_EXTRA_VERSION_TEXI "${GETDP_EXTRA_VERSION}")
+#set(GETDP_EXTRA_VERSION_TEXI "${GETDP_EXTRA_VERSION}")
+set(GETDP_EXTRA_VERSION_TEXI "")
 set(GETDP_EXTRA_VERSION_ORIG ${GETDP_EXTRA_VERSION})
 
 if(NOT GETDP_RELEASE)
@@ -92,7 +100,8 @@ if(NOT GETDP_RELEASE)
 endif()
 
 set(GETDP_VERSION "${GETDP_MAJOR_VERSION}.${GETDP_MINOR_VERSION}")
-set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}${GETDP_EXTRA_VERSION}")
+#set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}${GETDP_EXTRA_VERSION}")
+set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}")
 set(GETDP_SHORT_LICENSE "GNU General Public License")
 
 set(GETDP_API src/kernel/getdp.h)
@@ -115,7 +124,8 @@ if(NOT GETDP_HOST)
   if(NOT HOST)
     set(HOST "unknown")
   endif()
-  set(GETDP_HOST "${HOST}")
+  #set(GETDP_HOST "${HOST}")
+  set(GETDP_HOST "CENOS Build Machine ${GETDP_VERSION}-git-${GIT_COMMIT_HASH}")
 endif()
 
 if(NOT GETDP_PACKAGER)
