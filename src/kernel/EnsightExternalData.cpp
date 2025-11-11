@@ -6,6 +6,7 @@
 #include <cstring>
 #include <algorithm>
 #include <unordered_set>
+#include <unistd.h>
 #include <fstream>  
 
 #include <chrono>
@@ -107,7 +108,7 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
   current_filename = fname + charBuffer;
   if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
-    Message::Error("Unable to open file '%s', error %s",
+    Message::Error("writeGeometryBinary: Unable to open file '%s', error %s",
                    current_filename.c_str(), strerror(errno));
     return;
   }
@@ -197,8 +198,16 @@ void EnsightExternalData::writeVariableBinary(std::string fname)
            step_for_naming, data_sets[last_time_step].point_data[0].name);
   current_filename = Fix_RelativePath(charBuffer, Name_Path);
   current_filename = fname + charBuffer;
-  if(!(fd = FOpen(current_filename.c_str(), binary ? "wb" : "w"))) {
-    Message::Error("Unable to open file '%s', error %s",
+  
+	for(int i = 0; i < 10; ++i) {
+	  fd = FOpen(current_filename.c_str(), binary ? "wb" : "w");
+	  if(fd) break;
+	  usleep(50 * 1000); // 50 ms
+	  fprintf(fd, "Retrying opening file %s", current_filename.c_str());
+	}
+
+  if (!fd) {
+    Message::Error("writeVariableBinary: Unable to open file '%s', error %s",
                    current_filename.c_str(), strerror(errno));
     return;
   }
@@ -411,7 +420,7 @@ void EnsightExternalData::writeCaseFile(std::string fname)
   remove(current_filename.c_str());
 
   if(!(fd = FOpen(current_filename.c_str(), "w"))) {
-    Message::Error("Unable to open file '%s', error %s",
+    Message::Error("writeCaseFile: Unable to open file '%s', error %s",
                    current_filename.c_str(), strerror(errno));
     return;
   }
