@@ -578,9 +578,9 @@ void Message::Cpu(int level, bool printDate, bool printWallTime, bool printCpu,
   if(mem && printMem) {
     char tmp[128];
     if(_commSize > 1 && _isCommWorld)
-      sprintf(tmp, "Mem = %gMb [%gMb,%gMb]", sum[1], min[1], max[1]);
+      sprintf(tmp, "Mem = %gMB [%gMB,%gMB]", sum[1], min[1], max[1]);
     else
-      sprintf(tmp, "Mem = %gMb", max[1]);
+      sprintf(tmp, "Mem = %gMB", max[1]);
     pmem = tmp;
     if(printTraffic) pmem += ", ";
   }
@@ -592,7 +592,7 @@ void Message::Cpu(int level, bool printDate, bool printWallTime, bool printCpu,
     double rmb = (double)r / 1024. / 1024.;
     double smb = (double)s / 1024. / 1024.;
     char tmp[128];
-    sprintf(tmp, "Recv/Send = %g/%gMb", rmb, smb);
+    sprintf(tmp, "Recv/Send = %g/%gMB", rmb, smb);
     ptraffic = tmp;
   }
 

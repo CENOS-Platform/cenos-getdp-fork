@@ -310,7 +310,7 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
     PetscInt prealloc_full = (mloc > 0) ? mloc : n;
     int nonloc = Current.DofData->NonLocalEquations.size();
 
-    // heuristic for global rows: don't prelloc more than 500 Mb
+    // heuristic for global rows: don't prelloc more than 500 MB
     double limit = 500. * 1024. * 1024. / (gSCALAR_SIZE * sizeof(double));
     double estim = (double)nonloc * (double)mloc;
     if(estim > limit) {
