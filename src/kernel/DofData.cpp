@@ -1020,6 +1020,8 @@ void Dof_ReadFileRES(List_T *DofData_L, struct DofData *Read_DofData_P,
       }
 
       if(Read) {
+        Current.DofData = DofData_P; // required otherwise seg fault in LinAlg_CreateVector -> getLocalSize
+
         Solution_S.Time = Val_Time;
         Solution_S.TimeImag = Val_TimeImag;
         Solution_S.TimeStep = Val_TimeStep;
