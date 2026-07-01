@@ -5,6 +5,7 @@
 
 #include <math.h>
 #include <unordered_set>
+#include <vector>
 #include "ProData.h"
 #include "ProDefine.h"
 #include "GeoData.h"
@@ -17,6 +18,7 @@
 #include "Pos_Formulation.h"
 #include "MallocUtils.h"
 #include "Message.h"
+#include "DofData.h"
 
 extern struct Problem Problem_S;
 extern struct CurrentData Current;
@@ -256,7 +258,8 @@ void Pos_GlobalQuantity(struct PostQuantity *PostQuantity_P,
                         struct PostQuantityTerm *PostQuantityTerm_P,
                         struct Element *ElementEmpty, List_T *InRegion_L,
                         List_T *Support_L, struct Value *Value,
-                        int Type_InRegion)
+                        int Type_InRegion, bool partitioned,
+                        bool reduceIfPartitioned)
 {
   struct DefineQuantity *DefineQuantity_P;
   struct QuantityStorage *QuantityStorage_P;
@@ -320,6 +323,26 @@ void Pos_GlobalQuantity(struct PostQuantity *PostQuantity_P,
       Element.Type = Element.GeoElement->Type;
       Current.Region = Element.Region = Element.GeoElement->Region;
 
+      if(partitioned) {
+        // splitting elements over ranks
+        // strategy 1: only processing elements that belong to the current rank,
+        // according to mesh partitioning. 
+        /*bool skip = true;
+        if(Element.GeoElement->Partition == Message::GetCommRank() + 1) {
+          skip = false;
+        }*/
+        // strategy 2: splitting elements over ranks in a round-robin fashion, regardless of mesh partitioning.
+        // This is straightforward and more efficient: elements are distributed evenly over ranks, even when
+        // integration is performed on a subregion of the mesh (which may be unevenly distributed over partitions).
+        bool skip = false;
+        int myRank = Message::GetCommRank();
+        int nbRanks = Message::GetCommSize();
+        if(i_Element % nbRanks != myRank) {
+          skip = true;
+        }
+        if(skip) continue;
+      }
+
       int key = (Type_InRegion == ELEMENTSOF) ? Element.Num : Element.Region;
       /* Filter: consider only elements in both InRegion_L and Support_L */
       if((!InRegion_L || InRegion_S.find(key) != InRegion_S.end()) &&
@@ -333,6 +356,27 @@ void Pos_GlobalQuantity(struct PostQuantity *PostQuantity_P,
                                     &Element, Type_Quantity, 0., 0., 0., Value);
       }
     } /* for i_Element ... */
+
+    // if partitioned, reducing the value across ranks, only if reduceIfPartitioned is true (to avoid double reduction in case of multiple calls to Pos_GlobalQuantity)
+    if(partitioned && reduceIfPartitioned) {
+      struct Value sendValue;
+      Cal_CopyValue(Value, &sendValue);
+
+      std::vector<struct Value> recvValues(Message::GetCommSize());
+#if defined(HAVE_MPI)
+      MPI_Allgather(&sendValue, sizeof(struct Value), MPI_BYTE,
+                    &recvValues[0], sizeof(struct Value), MPI_BYTE,
+                    MPI_COMM_WORLD);
+#else
+      // user shouldn't end up here anyway because partitioned should be false if MPI is not enabled, but just in case:
+      Message::Error("Please compile with MPI to enable distributed post-processing of global quantities");
+#endif
+      Cal_ZeroValue(Value);
+      Value->Type = sendValue.Type;
+      for(int i_Rank = 0; i_Rank < Message::GetCommSize(); i_Rank++) {
+        Cal_AddValue(Value, &recvValues[i_Rank], Value);
+      }
+    }
 
   } /* if INTEGRAL ... */
 }
@@ -361,6 +405,26 @@ void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
 
   Cal_ZeroValue(Value);
   Value->Type = SCALAR;
+
+  // checking if the mesh is partitioned. If so, we are parallelising globalQuantity post-processing (see Pos_GlobalQuantity). TO DO: parallelise other quantities as well?
+  bool partitioned = false;
+  if(Message::GetCommSize() > 1 && Current.DofData->ElementRanks->size() &&
+    Current.TypeAssembly != ASSEMBLY_SPARSITY_PATTERN) {
+    if((int)Current.DofData->PartitionSplit.size() ==
+        Message::GetCommSize() + 1 ||
+      (int)Current.DofData->PartitionSplit.size() ==
+        Message::GetCommSize() + 2) {
+      partitioned = true;
+    }
+    else {
+      Message::Warning("Number of ranks %d not compatible with partition "
+                      "split - reverting to full assembly",
+                      Message::GetCommSize());
+    }
+  }
+#if !defined(HAVE_MPI)
+  partitioned = false;
+#endif
 
   /* Loop on PostQuantity Terms */
   /* ... with sum of results if common supports (In ...) */
@@ -455,9 +519,10 @@ void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
     /* ----------------- */
 
     else if(Type_Quantity == GLOBALQUANTITY) {
+      bool reduceIfPartitioned = i_PQT == List_Nbr(PostQuantity_P->PostQuantityTerm) - 1; // only reduce during last call, otherwise we will have multiple reductions incorrect output value
       Pos_GlobalQuantity(PostQuantity_P, DefineQuantity_P0, QuantityStorage_P0,
                          &PostQuantityTerm, Element, InRegion_L, Support_L,
-                         Value, Type_InRegion);
+                         Value, Type_InRegion, partitioned, reduceIfPartitioned);
     }
 
   } /* for i_PQT ... */
