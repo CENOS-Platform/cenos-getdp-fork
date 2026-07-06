@@ -175,6 +175,7 @@ dFunction                    return tdFunction;
 Dimension                    return tDimension;
 DimNameSpace                 return tDimNameSpace;
 DirName                      return tDirName;
+Distributed                  return tDistributed;
 DivisionCoefficient          return tDivisionCoefficient;
 DofValue                     return tDofValue;
 Dt                           return tDt;

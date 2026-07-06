@@ -1521,6 +1521,7 @@ struct PostOperation {
   List_T *TimeValue_L, *TimeImagValue_L;
   int LastTimeStepOnly, OverrideTimeStepValue, NoMesh, CatFile;
   int AppendTimeStepToFileName;
+  bool Distributed;
 };
 
 struct PostSubOperation {
@@ -1535,6 +1536,7 @@ struct PostSubOperation {
   char *NewCoordinatesFile;
   int ValueIndex;
   int ChangeOfCoordinates[3], LastTimeStepOnly, AppendTimeStepToFileName;
+  bool Distributed;
   int AppendExpressionToFileName;
   char *AppendStringToFileName, *AppendExpressionFormat;
   int OverrideTimeStepValue, NoMesh;

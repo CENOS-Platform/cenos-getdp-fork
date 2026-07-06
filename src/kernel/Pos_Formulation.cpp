@@ -437,8 +437,8 @@ void Pos_Formulation(struct Formulation *Formulation_P,
     }
 
     if(!strlen(PostFileName) ||
-       (Message::GetIsCommWorld() && Message::GetCommRank())) {
-      // in parallel mode (SetCommWorld), only rank 0 prints output
+       (Message::GetIsCommWorld() && Message::GetCommRank() && !PostSubOperation_P->Distributed)) {
+      // in parallel mode (SetCommWorld), only rank 0 prints output (unless explicitly distributed post-operations)
       PostStream = NULL;
     }
     else if(!PostSubOperation_P->CatFile) {

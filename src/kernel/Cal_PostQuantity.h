@@ -11,6 +11,7 @@
 void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
                       struct DefineQuantity *DefineQuantity_P0,
                       struct QuantityStorage *QuantityStorage_P0,
+                      bool distributedPostOperation,
                       List_T *Support_L, struct Element *Element, double u,
                       double v, double w, struct Value *Value);
 

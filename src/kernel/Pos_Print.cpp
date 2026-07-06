@@ -441,6 +441,7 @@ void Pos_PrintOnElementsOf(struct PostQuantity *NCPQ_P,
               Current.y = PE->y[iNode];
               Current.z = PE->z[iNode];
               Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0,
+                               PSO_P->Distributed,
                                NULL, &Element, PE->u[iNode], PE->v[iNode],
                                PE->w[iNode], &PE->Value[iNode]);
               if(CPQ_P)
@@ -479,6 +480,7 @@ void Pos_PrintOnElementsOf(struct PostQuantity *NCPQ_P,
               Current.y = PE->y[iNode];
               Current.z = PE->z[iNode];
               Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0,
+                               PSO_P->Distributed,
                                NULL, &Element, PE->u[iNode], PE->v[iNode],
                                PE->w[iNode], &PE->Value[iNode]);
               if(CPQ_P)
@@ -760,6 +762,7 @@ void normvec(double *a)
           Current.y = PE->y[iNode];                                            \
           Current.z = PE->z[iNode];                                            \
           Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0,      \
+                           PSO_P->Distributed,                                 \
                            NULL, &Element, PE->u[iNode], PE->v[iNode],         \
                            PE->w[iNode], &PE->Value[iNode]);                   \
           if(CPQ_P)                                                            \
@@ -1025,8 +1028,9 @@ void Pos_PrintOnSection(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
       PE->Index = NO_ELEMENT;                                                  \
     for(ts = 0; ts < NbTimeStep; ts++) {                                       \
       Pos_InitAllSolutions(PSO_P->TimeStep_L, ts);                             \
-      Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0, NULL,    \
-                       &Element, u, v, w, &PE->Value[0]);                      \
+      Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0,          \
+                       PSO_P->Distributed, NULL, &Element, u, v, w,            \
+                       &PE->Value[0]);                                         \
       if(CPQ_P)                                                                \
         Combine_PostQuantity(PSO_P->CombinationType, Order, &PE->Value[0],     \
                              &CumulativeValues[ts]);                           \
@@ -1055,8 +1059,9 @@ void Pos_PrintOnSection(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
     Current.Region = Element.Region;                                           \
     for(ts = 0; ts < NbTimeStep; ts++) {                                       \
       Pos_InitAllSolutions(PSO_P->TimeStep_L, ts);                             \
-      Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0, NULL,    \
-                       &Element, u, v, w, &PE->Value[0]);                      \
+      Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0,          \
+                       PSO_P->Distributed, NULL, &Element, u, v, w,            \
+                       &PE->Value[0]);                                         \
       if(PE->Value[0].Type != SCALAR)                                          \
         Message::Error(                                                        \
           "Print OnPlane not designed for non scalars with Depth > 1");        \
@@ -1504,8 +1509,8 @@ void Pos_PrintOnRegion(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
       Current.x = Current.y = Current.z = 0.;
 
       if(Type_Evaluation == GLOBAL) {
-        Cal_PostQuantity(PQ_P, DefineQuantity_P0, QuantityStorage_P0, Support_L,
-                         &Element, 0., 0., 0., &Value);
+        Cal_PostQuantity(PQ_P, DefineQuantity_P0, QuantityStorage_P0, PSO_P->Distributed,
+                         Support_L, &Element, 0., 0., 0., &Value);
       }
       else {
         if(Group_FunctionType == NODESOF)
@@ -1514,8 +1519,8 @@ void Pos_PrintOnRegion(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
         InWhichElement(&Current.GeoData->Grid, NULL, &Element, PSO_P->Dimension,
                        Current.x, Current.y, Current.z, &u, &v, &w);
 
-        Cal_PostQuantity(PQ_P, DefineQuantity_P0, QuantityStorage_P0, Support_L,
-                         &Element, u, v, w, &Value);
+        Cal_PostQuantity(PQ_P, DefineQuantity_P0, QuantityStorage_P0, PSO_P->Distributed,
+                         Support_L, &Element, u, v, w, &Value);
       }
 
       if(PSO_P->Format != FORMAT_REGION_VALUE &&
@@ -1621,8 +1626,8 @@ void Pos_PrintWithArgument(struct PostQuantity *NCPQ_P,
     Current.Region = Element.Region = Num_Region;
     Current.x = Current.y = Current.z = 0.;
 
-    Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0, NULL,
-                     &Element, 0., 0., 0., &Value);
+    Cal_PostQuantity(NCPQ_P, DefineQuantity_P0, QuantityStorage_P0, PSO_P->Distributed,
+                     NULL, &Element, 0., 0., 0., &Value);
 
     Format_PostValue(NCPQ_P, PSO_P, PSO_P->Format, PSO_P->Comma, REGION, 0, x,
                      1, 0, 0, 1, Current.NbrHar, PSO_P->HarmonicToTime,

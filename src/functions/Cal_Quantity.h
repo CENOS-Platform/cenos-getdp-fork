@@ -30,8 +30,12 @@ void Cal_StoreInRegister(struct Value *Value, int RegisterIndex);
 
 void Cal_StoreInVariable(struct Value *Value, const char *name);
 void Cal_GetValueSaved(struct Value *Value, const char *name);
+void Cal_GetValueSavedInRegister(struct Value *Value, int RegisterIndex);
 std::map<std::string, struct Value> &Get_AllValueSaved();
 
 bool Is_ExpressionConstant(struct Expression *Expression_P);
+
+void Cal_BroadcastValueInVariable(const char *name, int rootRank);
+void Cal_BroadcastValueInRegister(int registerIndex, int rootRank);
 
 #endif

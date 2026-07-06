@@ -4771,6 +4771,7 @@ PostOperation @{
     < NoMesh @var{expression-cst}; > < AppendToExistingFile @var{expression-cst}; >
     < ResampleTime[@var{expression-cst}, @var{expression-cst}, @var{expression-cst}]; >
     < AppendTimeStepToFileName < @var{expression-cst} >; >
+    < Distributed; >
     Operation @{
       < @var{post-operation-op}; > @dots{}
     @}
@@ -5022,6 +5023,13 @@ Output results for the specified imaginary time value(s) only.
 
 Output results for the last time step only (useful when calling a
 @code{PostOperation} directly in a @code{Resolution}, for example).
+
+@item Distributed
+
+Distributes the post-processing suboperations over all MPI processes (useful for
+very large number of post-processing suboperations). In this case, each suboperation is
+executed on a single, different MPI process. Default value is 0, meaning that all suboperations 
+are executed on all MPI processes, with integral quantities distributed over all processes.
 
 @item AppendExpressionToFileName
 @var{expression}

@@ -382,7 +382,7 @@ struct doubleXstring{
 %token        tStoreMaxInRegister tStoreMaxXinRegister tStoreMaxYinRegister
 %token        tStoreMaxZinRegister tStoreMinInRegister tStoreMinXinRegister
 %token        tStoreMinYinRegister tStoreMinZinRegister
-%token        tLastTimeStepOnly tAppendTimeStepToFileName tTimeValue tTimeImagValue
+%token        tLastTimeStepOnly tAppendTimeStepToFileName tTimeValue tTimeImagValue tDistributed
 %token        tTimeInterval tAtGaussPoints
 %token        tAppendExpressionToFileName tAppendExpressionFormat
 %token        tOverrideTimeStepValue tNoMesh
@@ -7239,6 +7239,7 @@ PostOperation :
       PostOperation_S.Comma = NULL;
       PostOperation_S.CatFile = 0;
       PostOperation_S.PostSubOperation = NULL;
+      PostOperation_S.Distributed = false;
       level_Append = 0;
     }
 
@@ -7345,6 +7346,11 @@ PostOperationTerm :
       PostOperation_S.ResampleTimeStop = $5;
       PostOperation_S.ResampleTimeStep = $7;
     }
+  
+  | tDistributed tEND
+    {
+      PostOperation_S.Distributed = true;
+    }
 
   | tOperation  '{' PostSubOperations '}'
     {
@@ -7371,6 +7377,7 @@ SeparatePostOperation :
       PostOperation_S.Comma = NULL;
       PostOperation_S.CatFile = 0;
       PostOperation_S.PostSubOperation = NULL;
+      PostOperation_S.Distributed = false;
       level_Append = $2; index_Append = -1;
       int i;
       if((i = List_ISearchSeq(Problem_S.PostProcessing, $5,
@@ -7485,6 +7492,7 @@ PostSubOperations :
       PostSubOperation_S.TimeInterval_Flag = 0;
       PostSubOperation_S.TimeInterval[0] = 0.;
       PostSubOperation_S.TimeInterval[1] = 0.;
+      PostSubOperation_S.Distributed = false;
      }
     PostSubOperation
     {
@@ -7507,6 +7515,8 @@ PostSubOperations :
           PostSubOperation_S.OverrideTimeStepValue = PostOperation_S.OverrideTimeStepValue;
 	if(!PostSubOperation_S.CatFile)
           PostSubOperation_S.CatFile = PostOperation_S.CatFile;
+  if(!PostSubOperation_S.Distributed)
+          PostSubOperation_S.Distributed = PostOperation_S.Distributed;
 
 	List_Add($$ = $1, &PostSubOperation_S);
       }
@@ -8228,6 +8238,10 @@ PrintOption :
         PostSubOperation_S.NewCoordinates = 1;
         PostSubOperation_S.NewCoordinatesFile = $3;
       }
+    }
+  | ',' tDistributed
+    {
+      PostSubOperation_S.Distributed = 1;
     }
  ;
 

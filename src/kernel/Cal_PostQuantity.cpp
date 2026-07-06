@@ -388,6 +388,7 @@ void Pos_GlobalQuantity(struct PostQuantity *PostQuantity_P,
 void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
                       struct DefineQuantity *DefineQuantity_P0,
                       struct QuantityStorage *QuantityStorage_P0,
+                      bool distributedPostOperation,
                       List_T *Support_L, struct Element *Element, double u,
                       double v, double w, struct Value *Value)
 {
@@ -408,8 +409,7 @@ void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
 
   // checking if the mesh is partitioned. If so, we are parallelising globalQuantity post-processing (see Pos_GlobalQuantity). TO DO: parallelise other quantities as well?
   bool partitioned = false;
-  if(Message::GetCommSize() > 1 && Current.DofData->ElementRanks->size() &&
-    Current.TypeAssembly != ASSEMBLY_SPARSITY_PATTERN) {
+  if(Message::GetCommSize() > 1) {
     if((int)Current.DofData->PartitionSplit.size() ==
         Message::GetCommSize() + 1 ||
       (int)Current.DofData->PartitionSplit.size() ==
@@ -425,6 +425,10 @@ void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
 #if !defined(HAVE_MPI)
   partitioned = false;
 #endif
+  if(distributedPostOperation) {
+    // all sub-operations are already distributed, so we don't further distribute the post-processing operation
+    partitioned = false;
+  }
 
   /* Loop on PostQuantity Terms */
   /* ... with sum of results if common supports (In ...) */
@@ -554,7 +558,7 @@ void Cal_PostCumulativeQuantity(List_T *Region_L, int SupportIndex,
   for(i = 0; i < NbrTimeStep; i++) {
     Pos_InitAllSolutions(TimeStep_L, i);
 
-    Cal_PostQuantity(PostQuantity_P, DefineQuantity_P0, QuantityStorage_P0,
+    Cal_PostQuantity(PostQuantity_P, DefineQuantity_P0, QuantityStorage_P0, false,
                      Support_L, &Element, 0, 0, 0, &(*Values)[i]);
   }
 }
