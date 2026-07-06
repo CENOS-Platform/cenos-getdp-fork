@@ -275,31 +275,31 @@ void Treatment_PostOperation(struct Resolution *Resolution_P,
           Cal_BroadcastValueInVariable(PostSubOperation_P->StoreInVariable, rootRank);
         }
         int register_ID = -1;
-        if(PostSubOperation_P->StoreInRegister) {
+        if(PostSubOperation_P->StoreInRegister >= 0) {
           register_ID = PostSubOperation_P->StoreInRegister;
         }
-        else if(PostSubOperation_P->StoreMinInRegister) {
+        else if(PostSubOperation_P->StoreMinInRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMinInRegister;
         }
-        else if(PostSubOperation_P->StoreMaxInRegister) {
+        else if(PostSubOperation_P->StoreMaxInRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMaxInRegister;
         }
-        else if(PostSubOperation_P->StoreMinXinRegister) {
+        else if(PostSubOperation_P->StoreMinXinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMinXinRegister;
         }
-        else if(PostSubOperation_P->StoreMinYinRegister) {
+        else if(PostSubOperation_P->StoreMinYinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMinYinRegister;
         }
-        else if(PostSubOperation_P->StoreMinZinRegister) {
+        else if(PostSubOperation_P->StoreMinZinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMinZinRegister;
         }
-        else if(PostSubOperation_P->StoreMaxXinRegister) {
+        else if(PostSubOperation_P->StoreMaxXinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMaxXinRegister;
         }
-        else if(PostSubOperation_P->StoreMaxYinRegister) {
+        else if(PostSubOperation_P->StoreMaxYinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMaxYinRegister;
         }
-        else if(PostSubOperation_P->StoreMaxZinRegister) {
+        else if(PostSubOperation_P->StoreMaxZinRegister >= 0) {
           register_ID = PostSubOperation_P->StoreMaxZinRegister;
         }
         if(register_ID >= 0 && Message::GetCommSize() > 1) {
