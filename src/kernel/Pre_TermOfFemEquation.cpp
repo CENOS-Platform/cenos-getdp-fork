@@ -176,7 +176,8 @@ void Pre_TermOfFemEquation(struct Element *Element,
       case INITFROMRESOLUTION:
         Dof_DefineInitSolveDof(
           QuantityStorageEqu_P->BasisFunction[i].CodeBasisFunction,
-          QuantityStorageEqu_P->BasisFunction[i].CodeEntity, Current.NbrHar);
+          QuantityStorageEqu_P->BasisFunction[i].CodeEntity, Current.NbrHar,
+          NonLocal ? -1 : Element->GeoElement->Partition);
         break;
       case CST_LINK:
         Dof_DefineLinkDof(
@@ -230,7 +231,8 @@ void Pre_TermOfFemEquation(struct Element *Element,
       case INITFROMRESOLUTION:
         Dof_DefineInitSolveDof(
           QuantityStorageDof_P->BasisFunction[i].CodeBasisFunction,
-          QuantityStorageDof_P->BasisFunction[i].CodeEntity, Current.NbrHar);
+          QuantityStorageDof_P->BasisFunction[i].CodeEntity, Current.NbrHar,
+          NonLocal ? -1 : Element->GeoElement->Partition);
         break;
       case CST_LINK:
         Dof_DefineLinkDof(

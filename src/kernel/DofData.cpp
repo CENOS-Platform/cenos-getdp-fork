@@ -1253,7 +1253,8 @@ void Dof_DefineInitFixedDof(int D1, int D2, int NbrHar, double *Val,
 /*  D o f _ D e f i n e I n i t S o l v e D o f                             */
 /* ------------------------------------------------------------------------ */
 
-void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar)
+void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar,
+                            int PartitionOrNonLocal)
 {
   struct Dof Dof;
   int k;
@@ -1268,7 +1269,7 @@ void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar)
       // old version: number as we go
       // Dof.Case.Unknown.NumDof = ++(CurrentDofData->NbrDof) ;
       Dof.Case.Unknown.NumDof = -1;
-      Dof.Case.Unknown.PartitionOrNonLocal = 0;
+      Dof.Case.Unknown.PartitionOrNonLocal = PartitionOrNonLocal;
       Tree_Add(CurrentDofData->DofTree, &Dof);
     }
   }
