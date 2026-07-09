@@ -371,9 +371,31 @@ void Pos_GlobalQuantity(struct PostQuantity *PostQuantity_P,
       // user shouldn't end up here anyway because partitioned should be false if MPI is not enabled, but just in case:
       Message::Error("Please compile with MPI to enable distributed post-processing of global quantities");
 #endif
-      Cal_ZeroValue(Value);
-      Value->Type = sendValue.Type;
+      // A rank that processed no element of the integration support still
+      // holds the default SCALAR zero set in Cal_PostQuantity, so the value
+      // type must be taken from a rank that actually contributed, and the
+      // untyped zeros must be skipped (adding e.g. VECTOR + SCALAR is an
+      // error in Cal_AddValue)
+      int commonType = SCALAR;
       for(int i_Rank = 0; i_Rank < Message::GetCommSize(); i_Rank++) {
+        if(recvValues[i_Rank].Type != SCALAR) {
+          commonType = recvValues[i_Rank].Type;
+          break;
+        }
+      }
+      Cal_ZeroValue(Value);
+      Value->Type = commonType;
+      for(int i_Rank = 0; i_Rank < Message::GetCommSize(); i_Rank++) {
+        if(recvValues[i_Rank].Type != commonType) {
+          bool isZero = true;
+          for(int i = 0; i < Current.NbrHar * MAX_DIM; i++) {
+            if(recvValues[i_Rank].Val[i] != 0.) {
+              isZero = false;
+              break;
+            }
+          }
+          if(isZero) continue; // rank had no elements in the support
+        }
         Cal_AddValue(Value, &recvValues[i_Rank], Value);
       }
     }
