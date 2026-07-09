@@ -168,11 +168,22 @@ static bool _usePartitions()
   return false; // partitioning does not match the number of ranks
 }
 
-static int _getLocalSize()
+static int _getLocalSize(int n = -1)
 {
   int s = PETSC_DECIDE;
 
   if(_usePartitions()) {
+    if(n >= 0 && *Current.DofData->PartitionSplit.rbegin() != n) {
+      // the partition split of Current.DofData describes a system with a
+      // different number of DoFs than the object being created; using its
+      // local sizes would silently produce an inconsistent parallel layout
+      // (PETSc only checks that the local sizes sum to the global size in
+      // debug builds)
+      Message::Warning("Partition split total %d of current system does not "
+                       "match requested global size %d - using default layout",
+                       (int)*Current.DofData->PartitionSplit.rbegin(), n);
+      return s;
+    }
     int r = Message::GetCommRank();
     if(r == Message::GetCommSize() - 1) {
       // add any non-partitioned/global equations in the last partition
@@ -198,7 +209,7 @@ void LinAlg_CreateVector(gVector *V, gSolver *Solver, int n, bool sequential)
 
   _try(VecCreate(MyComm, &V->V));
 
-  int nloc = _getLocalSize();
+  int nloc = _getLocalSize(n);
   if(nloc > n) {
     Message::Debug("Creating distributed vector with n (%d) < nloc (%d)",
                    n, nloc);

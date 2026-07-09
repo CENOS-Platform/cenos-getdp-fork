@@ -292,6 +292,9 @@ void Predictor(Resolution *Resolution_P, DofData *DofData_P0,
     System_P = (DefineSystem *)List_Pointer(Resolution_P->DefineSystem,
                                             TLAsystem.SystemIndex);
     DofData_P = DofData_P0 + TLAsystem.SystemIndex;
+    // LinAlg_CreateVector derives the local (partition) layout from
+    // Current.DofData, so it must point to the system owning the vector
+    Current.DofData = DofData_P;
 
     if(!List_Nbr(DofData_P->Solutions))
       Message::Error("No initial solution for system %s", System_P->Name);
@@ -433,6 +436,9 @@ double CalcMaxLTEratio(Resolution *Resolution_P, DofData *DofData_P0,
     DefineSystem_P = (DefineSystem *)List_Pointer(Resolution_P->DefineSystem,
                                                   TLAsystem.SystemIndex);
     DofData_P = DofData_P0 + TLAsystem.SystemIndex;
+    // LinAlg_CreateVector derives the local (partition) layout from
+    // Current.DofData, so it must point to the system owning the vector
+    Current.DofData = DofData_P;
 
     NbrSolutions = List_Nbr(DofData_P->Solutions);
     if(NbrSolutions < Order + 1) {
@@ -654,6 +660,9 @@ void Operation_TimeLoopAdaptive(Resolution *Resolution_P,
     DefineSystem *System_P = (DefineSystem *)List_Pointer(
       Resolution_P->DefineSystem, TLAsystem.SystemIndex);
     DofData_P = DofData_P0 + TLAsystem.SystemIndex;
+    // LinAlg_CreateVector derives the local (partition) layout from
+    // Current.DofData, so it must point to the system owning the vector
+    Current.DofData = DofData_P;
     NbrSolutions = List_Nbr(DofData_P->Solutions);
 
     if(!NbrSolutions)

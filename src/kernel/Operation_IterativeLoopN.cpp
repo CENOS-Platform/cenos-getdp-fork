@@ -48,6 +48,9 @@ double CalcMaxErrorRatio(Resolution *Resolution_P, DofData *DofData_P0,
     xPrevious_P = (gVector *)List_Pointer(xPrevious_L, i);
     xCurrent_P = &DofData_P->CurrentSolution->x;
 
+    // LinAlg_CreateVector derives the local (partition) layout from
+    // Current.DofData, so it must point to the system owning the vector
+    Current.DofData = DofData_P;
     LinAlg_CreateVector(&xError, &DofData_P->Solver, DofData_P->NbrDof);
 
     switch(ILsystem.NormOf) {
@@ -191,6 +194,9 @@ void Operation_IterativeLoopN(Resolution *Resolution_P, Operation *Operation_P,
       Message::Error("No initial solution for system %s", sys->Name);
 
     gVector xPrevious_S;
+    // LinAlg_CreateVector derives the local (partition) layout from
+    // Current.DofData, so it must point to the system owning the vector
+    Current.DofData = DofData_P;
     LinAlg_CreateVector(&xPrevious_S, &DofData_P->Solver, DofData_P->NbrDof);
     List_Add(xPrevious_L, &xPrevious_S);
   }
