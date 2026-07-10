@@ -430,8 +430,12 @@ void Cal_PostQuantity(struct PostQuantity *PostQuantity_P,
   Value->Type = SCALAR;
 
   // checking if the mesh is partitioned. If so, we are parallelising globalQuantity post-processing (see Pos_GlobalQuantity). TO DO: parallelise other quantities as well?
+  // ElementRanks is only filled when a partition split was set up (-sparsity
+  // with a partitioned mesh); without it this is a regular non-partitioned MPI
+  // run, so stay on full assembly silently instead of warning on every single
+  // post-quantity evaluation (the flood of warnings can crash MS-MPI's smpd)
   bool partitioned = false;
-  if(Message::GetCommSize() > 1) {
+  if(Message::GetCommSize() > 1 && Current.DofData->ElementRanks->size()) {
     if((int)Current.DofData->PartitionSplit.size() ==
         Message::GetCommSize() + 1 ||
       (int)Current.DofData->PartitionSplit.size() ==
