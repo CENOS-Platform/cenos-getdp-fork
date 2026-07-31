@@ -1805,11 +1805,8 @@ void Dof_AssembleInVec(struct Dof *Equ_P, struct Dof *Dof_P, int NbrHar,
 
     // During the -sparsity pattern pass only the matrix structure is being
     // recorded (the element-rank bookkeeping above); the values are discarded
-    // and the matrices are recreated afterwards. Reading them here is not just
-    // pointless but unsafe: for a transient scheme Cal_AssembleTerm passes
-    // (CurrentSolution - 1)->x, and the pattern pass runs from Generate_System
-    // before any solution exists, so that PETSc Vec is still NULL and
-    // VecGetArray() segfaults.
+    // and the matrices are recreated afterwards. Let's avoid reading them here
+    // so we avoid any unsafe memory access -> return early.
     if(Current.TypeAssembly == ASSEMBLY_SPARSITY_PATTERN) return;
 
     switch(Dof_P->Type) {
