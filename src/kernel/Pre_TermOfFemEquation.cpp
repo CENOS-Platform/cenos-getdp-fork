@@ -306,10 +306,14 @@ void Pre_GlobalTermOfFemEquation(int Num_Region,
   if(QuantityStorageEqu_P->NbrElementaryBasisFunction == 1) {
     switch(QuantityStorageEqu_P->BasisFunction[0].Constraint) {
     case NONE:
+      // Global-quantity dofs (GlobalTerm/GlobalEquation) have no owning mesh
+      // partition: PartitionOrNonLocal = -1 numbers them last, in the
+      // trailing "non-local" PartitionSplit segment that SolvingOperations.cpp
+      // attributes wholesale to the last rank for RAS.
       Dof_DefineUnknownDof(
         QuantityStorageEqu_P->BasisFunction[0].CodeBasisFunction,
         QuantityStorageEqu_P->BasisFunction[0].CodeEntity, Current.NbrHar,
-        true);
+        -1);
       break;
     case ASSIGN:
       Dof_DefineAssignFixedDof(
@@ -323,7 +327,7 @@ void Pre_GlobalTermOfFemEquation(int Num_Region,
         QuantityStorageEqu_P->BasisFunction[0].CodeBasisFunction,
         QuantityStorageEqu_P->BasisFunction[0].CodeEntity, Current.NbrHar,
         QuantityStorageEqu_P->BasisFunction[0].Value,
-        QuantityStorageEqu_P->BasisFunction[0].Value2, true);
+        QuantityStorageEqu_P->BasisFunction[0].Value2, -1);
       break;
     case ASSIGNFROMRESOLUTION:
       Dof_DefineAssignSolveDof(
@@ -358,10 +362,11 @@ void Pre_GlobalTermOfFemEquation(int Num_Region,
       switch(QuantityStorageDof_P->BasisFunction[0].Constraint) {
       case NONE:
         if(!QuantityStorageDof_P->BasisFunction[0].CodeAssociateBasisFunction)
+          // see the NONE case above: global-quantity dofs are non-local.
           Dof_DefineUnknownDof(
             QuantityStorageDof_P->BasisFunction[0].CodeBasisFunction,
             QuantityStorageDof_P->BasisFunction[0].CodeEntity, Current.NbrHar,
-            true);
+            -1);
         else
           Dof_DefineAssociateDof(
             QuantityStorageDof_P->BasisFunction[0].CodeAssociateBasisFunction,
@@ -513,9 +518,10 @@ void Pre_FemGlobalEquation2(int Index_DefineQuantity, int Num_Region,
   if(QuaSto_S.NbrElementaryBasisFunction == 1) {
     switch(QuaSto_S.BasisFunction[0].Constraint) {
     case NONE:
+      // see Pre_GlobalTermOfFemEquation: global-quantity dofs are non-local.
       Dof_DefineUnknownDof(QuaSto_S.BasisFunction[0].CodeBasisFunction,
                            QuaSto_S.BasisFunction[0].CodeEntity, Current.NbrHar,
-                           true);
+                           -1);
       break;
     case ASSIGN:
       Dof_DefineAssignFixedDof(QuaSto_S.BasisFunction[0].CodeBasisFunction,
