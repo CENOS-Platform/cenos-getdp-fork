@@ -1809,6 +1809,12 @@ struct Element {
   int NbrEntitiesInGroups[NBR_MAX_GROUPS_IN_ELEMENT];
   int NumEntitiesInGroups[NBR_MAX_GROUPS_IN_ELEMENT]
                          [NBR_MAX_ENTITIES_IN_ELEMENT];
+  // signed multiplicity of each entity in NumEntitiesInGroups: an entity may be
+  // listed several times by the group generator (cohomology cuts encode the
+  // cochain coefficient as duplicated Line elements), and it is accumulated
+  // here rather than taking one array slot per occurrence
+  int CoefEntitiesInGroups[NBR_MAX_GROUPS_IN_ELEMENT]
+                          [NBR_MAX_ENTITIES_IN_ELEMENT];
   int NumSubFunction[3][NBR_MAX_GROUPS_IN_ELEMENT];
 
   struct GlobalBasisFunction *GlobalBasisFunction[NBR_MAX_GROUPS_IN_ELEMENT];

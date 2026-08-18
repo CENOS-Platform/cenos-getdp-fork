@@ -24,14 +24,15 @@ void BF_SubFunction(struct Element *Element, int NumExpression, int Dim,
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_GroupOfNodes_X, BF_Node_X)                                       \
-  int i;                                                                       \
+  int i, Coef;                                                                 \
   double val;                                                                  \
                                                                                \
   *s = 0.;                                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
     (BF_Node_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, v,  \
                 w, &val);                                                      \
-    *s += val;                                                                 \
+    *s += Coef * val;                                                          \
   }                                                                            \
                                                                                \
   if(Element->NumSubFunction[0][NumGroup - 1] >= 0)                            \
@@ -52,16 +53,17 @@ void BF_GroupOfNodes_3V(ARGS) { BF("BF_GroupOfNodes_3V", BF_Node_3V); }
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_GradGroupOfNodes_X, BF_GradNode_X)                               \
-  int i;                                                                       \
+  int i, Coef;                                                                 \
   double val[3];                                                               \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
     (BF_GradNode_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, \
                     v, w, val);                                                \
-    s[0] += val[0];                                                            \
-    s[1] += val[1];                                                            \
-    s[2] += val[2];                                                            \
+    s[0] += Coef * val[0];                                                     \
+    s[1] += Coef * val[1];                                                     \
+    s[2] += Coef * val[2];                                                     \
   }                                                                            \
                                                                                \
   if(Element->NumSubFunction[0][NumGroup - 1] >= 0)                            \
@@ -100,14 +102,15 @@ void BF_GradGroupOfNodes_3V(ARGS)
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_GroupOfPerpendicularEdges_X, BF_Node_X)                          \
-  int i;                                                                       \
+  int i, Coef;                                                                 \
   double val;                                                                  \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
     (BF_Node_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, v,  \
                 w, &val);                                                      \
-    s[2] += val;                                                               \
+    s[2] += Coef * val;                                                        \
   }                                                                            \
                                                                                \
   if(Element->NumSubFunction[0][NumGroup - 1] >= 0)                            \
@@ -149,15 +152,16 @@ void BF_GroupOfPerpendicularEdges_3V(ARGS)
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_CurlGroupOfPerpendicularEdges_X, BF_GradNode_X)                  \
-  int i;                                                                       \
+  int i, Coef;                                                                 \
   double val[3];                                                               \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
     (BF_GradNode_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, \
                     v, w, val);                                                \
-    s[0] += val[1];                                                            \
-    s[1] += -val[0];                                                           \
+    s[0] += Coef * val[1];                                                     \
+    s[1] += -Coef * val[0];                                                    \
   }                                                                            \
                                                                                \
   if(Element->NumSubFunction[0][NumGroup - 1] >= 0)                            \
@@ -199,24 +203,17 @@ void BF_CurlGroupOfPerpendicularEdges_3V(ARGS)
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_GroupOfEdges_X, BF_Edge_X)                                       \
-  int i, Num;                                                                  \
+  int i, Coef;                                                                 \
   double val[3];                                                               \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
-    (BF_Edge_X)(Element,                                                       \
-                abs(Num = Element->NumEntitiesInGroups[NumGroup - 1][i]), u,   \
-                v, w, val);                                                    \
-    if(Num > 0) {                                                              \
-      s[0] += val[0];                                                          \
-      s[1] += val[1];                                                          \
-      s[2] += val[2];                                                          \
-    }                                                                          \
-    else {                                                                     \
-      s[0] -= val[0];                                                          \
-      s[1] -= val[1];                                                          \
-      s[2] -= val[2];                                                          \
-    }                                                                          \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
+    (BF_Edge_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, v,  \
+                w, val);                                                       \
+    s[0] += Coef * val[0];                                                     \
+    s[1] += Coef * val[1];                                                     \
+    s[2] += Coef * val[2];                                                     \
   }
 
 void BF_GroupOfEdges(ARGS) { BF("BF_GroupOfEdges", BF_Edge); }
@@ -239,24 +236,17 @@ void BF_GroupOfEdges_4V(ARGS) { BF("BF_GroupOfEdges_4V", BF_Edge_4V); }
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_CurlGroupOfEdges_X, BF_CurlEdge_X)                               \
-  int i, Num;                                                                  \
+  int i, Coef;                                                                 \
   double val[3];                                                               \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
-    (BF_CurlEdge_X)(Element,                                                   \
-                    abs(Num = Element->NumEntitiesInGroups[NumGroup - 1][i]),  \
-                    u, v, w, val);                                             \
-    if(Num > 0) {                                                              \
-      s[0] += val[0];                                                          \
-      s[1] += val[1];                                                          \
-      s[2] += val[2];                                                          \
-    }                                                                          \
-    else {                                                                     \
-      s[0] -= val[0];                                                          \
-      s[1] -= val[1];                                                          \
-      s[2] -= val[2];                                                          \
-    }                                                                          \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
+    (BF_CurlEdge_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u,  \
+                    v, w, val);                                                \
+    s[0] += Coef * val[0];                                                     \
+    s[1] += Coef * val[1];                                                     \
+    s[2] += Coef * val[2];                                                     \
   }
 
 void BF_CurlGroupOfEdges(ARGS) { BF("BF_CurlGroupOfEdges", BF_CurlEdge); }
@@ -312,24 +302,17 @@ void BF_CurlGroupOfEdges_4V(ARGS)
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_GroupOfFacets_X, BF_Facet_X)                                     \
-  int i, Num;                                                                  \
+  int i, Coef;                                                                 \
   double val[3];                                                               \
                                                                                \
   s[0] = s[1] = s[2] = 0.;                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
-    (BF_Facet_X)(Element,                                                      \
-                 abs(Num = Element->NumEntitiesInGroups[NumGroup - 1][i]), u,  \
-                 v, w, val);                                                   \
-    if(Num > 0) {                                                              \
-      s[0] += val[0];                                                          \
-      s[1] += val[1];                                                          \
-      s[2] += val[2];                                                          \
-    }                                                                          \
-    else {                                                                     \
-      s[0] -= val[0];                                                          \
-      s[1] -= val[1];                                                          \
-      s[2] -= val[2];                                                          \
-    }                                                                          \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
+    (BF_Facet_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u, v,  \
+                 w, val);                                                      \
+    s[0] += Coef * val[0];                                                     \
+    s[1] += Coef * val[1];                                                     \
+    s[2] += Coef * val[2];                                                     \
   }
 
 void BF_GroupOfFacets(ARGS) { BF("BF_GroupOfFacets", BF_Facet); }
@@ -341,18 +324,15 @@ void BF_GroupOfFacets(ARGS) { BF("BF_GroupOfFacets", BF_Facet); }
 /* ------------------------------------------------------------------------ */
 
 #define BF(BF_DivGroupOfFacets_X, BF_DivFacet_X)                               \
-  int i, Num;                                                                  \
+  int i, Coef;                                                                 \
   double val;                                                                  \
                                                                                \
   *s = 0.;                                                                     \
   for(i = 0; i < Element->NbrEntitiesInGroups[NumGroup - 1]; i++) {            \
-    (BF_DivFacet_X)(Element,                                                   \
-                    abs(Num = Element->NumEntitiesInGroups[NumGroup - 1][i]),  \
-                    u, v, w, &val);                                            \
-    if(Num > 0) { *s += val; }                                                 \
-    else {                                                                     \
-      *s -= val;                                                               \
-    }                                                                          \
+    if(!(Coef = Element->CoefEntitiesInGroups[NumGroup - 1][i])) continue;      \
+    (BF_DivFacet_X)(Element, Element->NumEntitiesInGroups[NumGroup - 1][i], u,  \
+                    v, w, &val);                                               \
+    *s += Coef * val;                                                          \
   }
 
 void BF_DivGroupOfFacets(ARGS) { BF("BF_DivGroupOfFacets", BF_DivFacet); }
