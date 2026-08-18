@@ -58,9 +58,11 @@ int Geo_AddGeoData(List_T *GeoData_L, char *Name_MshFile,
     Message::Info("Loading Geometric data '%s'", Name_MshFile);
     i = List_Nbr(GeoData_L);
     Geo_InitGeoData(&GeoData_S, i, Name_MshFile);
+    if(Message::GetInfoCpu()) Message::MarkOperationCpu("ReadMeshFile");
     Geo_OpenFile(Name_MshFile, "rb");
     Geo_ReadFile(&GeoData_S);
     Geo_CloseFile();
+    if(Message::GetInfoCpu()) Message::MarkOperationCpu("");
 
     if(!Name_AdaptFile) Name_AdaptFile = Name_DefaultAdaptFile;
     if(Name_AdaptFile) {

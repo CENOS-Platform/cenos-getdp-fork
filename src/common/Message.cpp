@@ -74,6 +74,12 @@ int Message::_progressMeterCurrent = 0;
 bool Message::_infoCpu = false;
 double Message::_startTime = 0.;
 std::map<std::string, double> Message::_timers;
+std::map<std::string, double> Message::_cpuOpTime;
+std::map<std::string, double> Message::_wallOpTime;
+std::map<std::string, int> Message::_cpuOpCount;
+std::string Message::_cpuOpLastKey;
+double Message::_cpuOpLastCpu = 0.;
+double Message::_cpuOpLastWall = 0.;
 GmshClient *Message::_client = 0;
 onelab::client *Message::_onelabClient = 0;
 #if !defined(HAVE_ONELAB) // if Gmsh is compiled without onelab
@@ -693,6 +699,67 @@ void Message::PrintTimers()
       fprintf(stdout, "Timers  : %s\n", str.c_str());
     fflush(stdout);
   }
+}
+
+void Message::MarkOperationCpu(const std::string &key)
+{
+  if(!_infoCpu) return; // tracked on every rank, reduced/printed on rank 0
+
+  double s = 0.;
+  std::size_t mem = 0;
+  GetResources(&s, &mem);
+  double w = GetWallClockTime();
+
+  if(_cpuOpLastKey.size()) {
+    _cpuOpTime[_cpuOpLastKey] += s - _cpuOpLastCpu;
+    _wallOpTime[_cpuOpLastKey] += w - _cpuOpLastWall;
+    _cpuOpCount[_cpuOpLastKey]++;
+  }
+  _cpuOpLastKey = key;
+  _cpuOpLastCpu = s;
+  _cpuOpLastWall = w;
+}
+
+void Message::PrintOperationCpuSummary()
+{
+  if(!_infoCpu) return;
+
+  MarkOperationCpu(""); // flush the last pending operation
+
+#if defined(HAVE_PETSC)
+  if(_commSize > 1 && _isCommWorld) {
+    // reduce across ranks (assumes identical keys everywhere): CPU summed
+    // (total work), Wall maxed (critical path)
+    for(std::map<std::string, double>::iterator it = _cpuOpTime.begin();
+        it != _cpuOpTime.end(); it++) {
+      double cpuIn = it->second, wallIn = _wallOpTime[it->first];
+      double cpuOut = 0., wallOut = 0.;
+      MPI_Reduce(&cpuIn, &cpuOut, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&wallIn, &wallOut, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+      it->second = cpuOut;
+      _wallOpTime[it->first] = wallOut;
+    }
+  }
+#endif
+
+  if(_commRank && _isCommWorld) { // only rank 0 prints
+    _cpuOpTime.clear();
+    _wallOpTime.clear();
+    _cpuOpCount.clear();
+    return;
+  }
+
+  if(_cpuOpTime.empty()) return;
+
+  Direct("Cumulative performance summary:");
+  for(std::map<std::string, double>::iterator it = _cpuOpTime.begin();
+      it != _cpuOpTime.end(); it++)
+    Direct("  %-24s %d calls, CPU = %gs, Wall = %gs", it->first.c_str(),
+        _cpuOpCount[it->first], it->second, _wallOpTime[it->first]);
+
+  _cpuOpTime.clear();
+  _wallOpTime.clear();
+  _cpuOpCount.clear();
 }
 
 void Message::PrintErrorCounter(const char *title)
