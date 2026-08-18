@@ -44,6 +44,12 @@ private:
   static double _startTime;
   // timers
   static std::map<std::string, double> _timers;
+  // cumulative cpu/wall time and call count per named Resolution operation
+  // (for -cpu)
+  static std::map<std::string, double> _cpuOpTime, _wallOpTime;
+  static std::map<std::string, int> _cpuOpCount;
+  static std::string _cpuOpLastKey;
+  static double _cpuOpLastCpu, _cpuOpLastWall;
   // communication with Gmsh
   static GmshClient *_client;
   // communication with onelab server
@@ -100,6 +106,9 @@ public:
     if(!_commRank) _progressMeterCurrent = 0;
   }
   static void SetInfoCpu(bool val) { _infoCpu = val; }
+  static bool GetInfoCpu() { return _infoCpu; }
+  static void MarkOperationCpu(const std::string &key);
+  static void PrintOperationCpuSummary();
   static void PrintErrorCounter(const char *title);
   static void SetLastPETScError(int ierr) { _lastPETScError = ierr; }
   static int GetLastPETScError() { return _lastPETScError; }

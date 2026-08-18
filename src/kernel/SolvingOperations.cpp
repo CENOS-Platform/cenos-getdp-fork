@@ -764,6 +764,11 @@ void Init_OperationOnSystem(const char *Name, struct Resolution *Resolution_P,
     Name ? Name : Get_StringForDefine(Operation_Type, Operation_P->Type);
   Message::Info("%s[%s]", str, (*DefineSystem_P)->Name);
   Message::ProgressMeter(0, 0, "Processing (%s)", str);
+  if(Message::GetInfoCpu()) {
+    char key[256];
+    sprintf(key, "%s[%s]", str, (*DefineSystem_P)->Name);
+    Message::MarkOperationCpu(key);
+  }
 }
 
 /* ------------------------------------------------------------------------ */
