@@ -7352,6 +7352,11 @@ PostOperationTerm :
       PostOperation_S.Distributed = true;
     }
 
+  | tDistributed FExpr tEND
+    {
+      PostOperation_S.Distributed = $2 ? true : false;
+    }
+
   | tOperation  '{' PostSubOperations '}'
     {
       PostOperation_S.PostSubOperation = $3;
@@ -8242,6 +8247,10 @@ PrintOption :
   | ',' tDistributed
     {
       PostSubOperation_S.Distributed = 1;
+    }
+  | ',' tDistributed FExpr
+    {
+      PostSubOperation_S.Distributed = $3 ? 1 : 0;
     }
  ;
 

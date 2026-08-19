@@ -4777,7 +4777,7 @@ PostOperation @{
     < NoMesh @var{expression-cst}; > < AppendToExistingFile @var{expression-cst}; >
     < ResampleTime[@var{expression-cst}, @var{expression-cst}, @var{expression-cst}]; >
     < AppendTimeStepToFileName < @var{expression-cst} >; >
-    < Distributed; >
+    < Distributed < @var{expression-cst} >; >
     Operation @{
       < @var{post-operation-op}; > @dots{}
     @}
@@ -5036,8 +5036,10 @@ Distributes the post-processing suboperations over all MPI processes (useful for
 very large number of post-processing suboperations). In this case, each suboperation is
 executed on a single, different MPI process. Default value is 0, meaning that all suboperations 
 are executed on all MPI processes, with integral quantities distributed over all processes
-when @code{-sparsity} is used. Do not use this option if @code{PostOperation} to be used for error 
-estimation in @code{TimeLoopAdaptive} or @code{IterativeLoopN}. This is an expert-only option.
+when @code{-sparsity} is used. Do not use this option if @code{PostOperation} to be used for error
+estimation in @code{TimeLoopAdaptive} or @code{IterativeLoopN}. This is an expert-only option. An
+optional @var{expression-cst} can be given to enable or disable it,
+with the same meaning as omitting or specifying the keyword.
 
 @item AppendExpressionToFileName
 @var{expression}
