@@ -1020,6 +1020,8 @@ void Dof_ReadFileRES(List_T *DofData_L, struct DofData *Read_DofData_P,
       }
 
       if(Read) {
+        Current.DofData = DofData_P; // required otherwise seg fault in LinAlg_CreateVector -> getLocalSize
+
         Solution_S.Time = Val_Time;
         Solution_S.TimeImag = Val_TimeImag;
         Solution_S.TimeStep = Val_TimeStep;
@@ -1251,7 +1253,8 @@ void Dof_DefineInitFixedDof(int D1, int D2, int NbrHar, double *Val,
 /*  D o f _ D e f i n e I n i t S o l v e D o f                             */
 /* ------------------------------------------------------------------------ */
 
-void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar)
+void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar,
+                            int PartitionOrNonLocal)
 {
   struct Dof Dof;
   int k;
@@ -1266,7 +1269,7 @@ void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar)
       // old version: number as we go
       // Dof.Case.Unknown.NumDof = ++(CurrentDofData->NbrDof) ;
       Dof.Case.Unknown.NumDof = -1;
-      Dof.Case.Unknown.PartitionOrNonLocal = 0;
+      Dof.Case.Unknown.PartitionOrNonLocal = PartitionOrNonLocal;
       Tree_Add(CurrentDofData->DofTree, &Dof);
     }
   }
@@ -1799,6 +1802,12 @@ void Dof_AssembleInVec(struct Dof *Equ_P, struct Dof *Dof_P, int NbrHar,
         }
       }
     }
+
+    // During the -sparsity pattern pass only the matrix structure is being
+    // recorded (the element-rank bookkeeping above); the values are discarded
+    // and the matrices are recreated afterwards. Let's avoid reading them here
+    // so we avoid any unsafe memory access -> return early.
+    if(Current.TypeAssembly == ASSEMBLY_SPARSITY_PATTERN) return;
 
     switch(Dof_P->Type) {
     case DOF_UNKNOWN:

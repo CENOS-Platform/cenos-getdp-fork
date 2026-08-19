@@ -1325,6 +1325,17 @@ void Cal_StoreInRegister(struct Value *Value, int RegisterIndex)
   Cal_CopyValue(Value, &ValueSaved[RegisterIndex]);
 }
 
+void Cal_GetValueSavedInRegister(struct Value *Value, int RegisterIndex)
+{
+  if(ValueSaved.count(RegisterIndex))
+    Cal_CopyValue(&ValueSaved[RegisterIndex], Value);
+  else {
+    Message::Warning("Empty register %d: assuming zero value", RegisterIndex);
+    Cal_ZeroValue(Value);
+    Value->Type = SCALAR;
+  }
+}
+
 /* ------------------------------------------------------------------------ */
 /*  C a l _ S t o r e I n V a r i a b l e                                   */
 /* ------------------------------------------------------------------------ */
@@ -1350,3 +1361,63 @@ std::map<std::string, struct Value> &Get_AllValueSaved()
 {
   return NamedValueSaved;
 }
+
+#if defined(HAVE_MPI)
+void Cal_BroadcastValueInVariable(const char *name, int rootRank)
+{
+  if(!name) return;
+
+  std::map<std::string, struct Value> &values = Get_AllValueSaved();
+  struct Value value;
+  int commrank = Message::GetCommRank();
+
+  if(commrank == rootRank) {
+    value = values[name];
+    //Message::Warning("Rank %d: Broadcasting variable '%s' with value (type: %d): ", commrank, name, value.Type);
+  }
+  MPI_Bcast(&value.Type, 1, MPI_INT, rootRank, MPI_COMM_WORLD);
+  MPI_Bcast(value.Val, NBR_MAX_HARMONIC * MAX_DIM, MPI_DOUBLE, rootRank,
+            MPI_COMM_WORLD);
+
+  if(commrank != rootRank) {
+    //Message::Warning("Rank %d: Receiving variable '%s' with value (type: %d): ", commrank, name, value.Type);
+    if(value.Type) {
+      Cal_StoreInVariable(&value, name);
+    }
+  }
+}
+
+void Cal_BroadcastValueInRegister(int registerIndex, int rootRank)
+{
+  if(registerIndex < 0) return;
+
+  struct Value value;
+  int commrank = Message::GetCommRank();
+
+  if(commrank == rootRank) {
+    Cal_GetValueSavedInRegister(&value, registerIndex);
+    //Message::Warning("Rank %d: Broadcasting register %d with value (type: %d): ", commrank, registerIndex, value.Type);
+  }
+  MPI_Bcast(&value.Type, 1, MPI_INT, rootRank, MPI_COMM_WORLD);
+  MPI_Bcast(value.Val, NBR_MAX_HARMONIC * MAX_DIM, MPI_DOUBLE, rootRank, MPI_COMM_WORLD);
+
+  if(commrank != rootRank) {
+    //Message::Warning("Rank %d: Receiving register %d with value (type: %d): ", commrank, registerIndex, value.Type);
+    if(value.Type) {
+      Cal_StoreInRegister(&value, registerIndex);
+    }
+  }
+}
+#else
+void Cal_BroadcastValueInVariable(const char *name, int rootRank)
+{
+  Message::Error("Cal_BroadcastValueInVariable is only available in MPI mode.");
+  return;
+}
+
+void Cal_BroadcastValueInRegister(int registerIndex, int rootRank)
+{
+  Message::Error("Cal_BroadcastValueInRegister is only available in MPI mode.");
+  return;
+}
+#endif

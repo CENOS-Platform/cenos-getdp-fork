@@ -357,8 +357,18 @@ void Pos_ResampleTime(struct PostOperation *PostOperation_P)
     NewSolutions_L, List_Nbr(NewSolutions_L) - 1);
   for(int j = 0; j < NewNbrOfSolutions; j++) {
     Solution_P = (struct Solution *)List_Pointer(Current.DofData->Solutions, j);
+    // gathering appropriate DofData and Time values for each solution, 
+    // before calling Get_TimeFunctionValues which requires
+    // these quantities to be set correctly, see e.g. SolvingAnalyse.cpp
+    Current.DofData->CurrentSolution = Solution_P;
+    Current.Time = Solution_P->Time;
+    Current.TimeImag = Solution_P->TimeImag;
     Solution_P->TimeFunctionValues = Get_TimeFunctionValues(Current.DofData);
   }
+  Current.DofData->CurrentSolution = (struct Solution *)List_Pointer(
+    NewSolutions_L, List_Nbr(NewSolutions_L) - 1);
+  Current.Time = Current.DofData->CurrentSolution->Time;
+  Current.TimeImag = Current.DofData->CurrentSolution->TimeImag;
 
   Free(OriginalTime_P);
   Free(OriginalValueR_P);
@@ -427,8 +437,8 @@ void Pos_Formulation(struct Formulation *Formulation_P,
     }
 
     if(!strlen(PostFileName) ||
-       (Message::GetIsCommWorld() && Message::GetCommRank())) {
-      // in parallel mode (SetCommWorld), only rank 0 prints output
+       (Message::GetIsCommWorld() && Message::GetCommRank() && !PostSubOperation_P->Distributed)) {
+      // in parallel mode (SetCommWorld), only rank 0 prints output (unless explicitly distributed post-operations)
       PostStream = NULL;
     }
     else if(!PostSubOperation_P->CatFile) {

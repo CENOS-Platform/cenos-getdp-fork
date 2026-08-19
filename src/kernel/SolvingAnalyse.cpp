@@ -6,7 +6,6 @@
 // Contributor(s):
 //   Johan Gyselinck
 //   Ruth Sabariego
-//
 
 #include <string.h>
 #include "ProData.h"
@@ -16,6 +15,7 @@
 #include "Cal_Quantity.h"
 #include "Get_DofOfElement.h"
 #include "Pos_Formulation.h"
+#include "Cal_Quantity.h"
 #include "SolvingOperations.h"
 #include "MallocUtils.h"
 #include "Message.h"
@@ -225,12 +225,93 @@ void Treatment_PostOperation(struct Resolution *Resolution_P,
   }
 
   Nbr_PostSubOperation = List_Nbr(PostOperation_P->PostSubOperation);
+  bool anyDistributed = false;
   for(i_POP = 0; i_POP < Nbr_PostSubOperation; i_POP++) {
     PostSubOperation_P = (struct PostSubOperation *)List_Pointer(
       PostOperation_P->PostSubOperation, i_POP);
-    Message::Info("PostOperation '%s' %d/%d", PostOperation_P->Name, i_POP + 1,
-                  Nbr_PostSubOperation);
-    Pos_Formulation(Formulation_P, PostProcessing_P, PostSubOperation_P);
+    if(!PostOperation_P->Distributed) {
+      // non-distributed post-operations: all ranks execute all sub-operations
+      Message::Info("PostSubOperation '%s' %d/%d", PostOperation_P->Name, i_POP + 1,
+        Nbr_PostSubOperation);
+      Pos_Formulation(Formulation_P, PostProcessing_P, PostSubOperation_P);
+    }
+    else {
+      // distributed post-operations: round-robin assignment of sub-operations to ranks
+      bool skip = false;
+      if(PostSubOperation_P->Distributed) {
+#if defined(HAVE_MPI)
+        anyDistributed = true;
+        if(i_POP % Message::GetCommSize() != Message::GetCommRank()){
+          skip = true;
+        }
+#else
+        Message::Info("Please compile with MPI to enable distributed post-operations. Running in serial mode.");
+#endif
+      }
+      if(PostSubOperation_P->Distributed) {
+        Message::Info("PostSubOperation (distributed) '%s' %d/%d", PostOperation_P->Name, i_POP + 1,
+          Nbr_PostSubOperation);
+      }
+      else {
+        Message::Info("PostSubOperation '%s' %d/%d", PostOperation_P->Name, i_POP + 1,
+          Nbr_PostSubOperation);
+      }
+      if(!skip) {
+        Pos_Formulation(Formulation_P, PostProcessing_P, PostSubOperation_P);
+      }
+    }
+  }
+
+  // Synchronizing all ranks after distributed post-operations:
+  // variables and registers computed from distributed post-operations must be broadcasted to all ranks
+  if(PostOperation_P->Distributed && anyDistributed) {
+    Message::Barrier();
+    for(i_POP = 0; i_POP < Nbr_PostSubOperation; i_POP++) {
+      PostSubOperation_P = (struct PostSubOperation *)List_Pointer(PostOperation_P->PostSubOperation, i_POP);
+      if(PostSubOperation_P->Distributed) {
+#if defined(HAVE_MPI)
+        if(PostSubOperation_P->StoreInVariable && Message::GetCommSize() > 1) {
+          int rootRank = i_POP % Message::GetCommSize();
+          Cal_BroadcastValueInVariable(PostSubOperation_P->StoreInVariable, rootRank);
+        }
+        int register_ID = -1;
+        if(PostSubOperation_P->StoreInRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreInRegister;
+        }
+        else if(PostSubOperation_P->StoreMinInRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMinInRegister;
+        }
+        else if(PostSubOperation_P->StoreMaxInRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMaxInRegister;
+        }
+        else if(PostSubOperation_P->StoreMinXinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMinXinRegister;
+        }
+        else if(PostSubOperation_P->StoreMinYinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMinYinRegister;
+        }
+        else if(PostSubOperation_P->StoreMinZinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMinZinRegister;
+        }
+        else if(PostSubOperation_P->StoreMaxXinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMaxXinRegister;
+        }
+        else if(PostSubOperation_P->StoreMaxYinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMaxYinRegister;
+        }
+        else if(PostSubOperation_P->StoreMaxZinRegister >= 0) {
+          register_ID = PostSubOperation_P->StoreMaxZinRegister;
+        }
+        if(register_ID >= 0 && Message::GetCommSize() > 1) {
+          int rootRank = i_POP % Message::GetCommSize();
+          Cal_BroadcastValueInRegister(register_ID, rootRank);
+        }
+#else
+        Message::Info("Please compile with MPI to enable distributed post-operations. Running in serial mode.");
+#endif
+      }
+    }
+    Message::Barrier();
   }
 
   if(PostOperation_P->ResampleTime) {

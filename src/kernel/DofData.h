@@ -203,7 +203,8 @@ void Dof_DefineInitFixedDof(int D1, int D2, int NbrHar, double *Val,
                             double *Val2, int PartitionOrNonLocal = 0);
 void Dof_DefineAssignSolveDof(int D1, int D2, int NbrHar,
                               int Index_TimeFunction);
-void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar);
+void Dof_DefineInitSolveDof(int D1, int D2, int NbrHar,
+                            int PartitionOrNonLocal = 0);
 void Dof_DefineLinkDof(int D1, int D2, int NbrHar, double Value[], int D2_Link);
 void Dof_DefineLinkCplxDof(int D1, int D2, int NbrHar, double Value[],
                            int D2_Link);

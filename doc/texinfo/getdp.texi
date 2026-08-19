@@ -483,7 +483,9 @@ Caches lump element circuit computations to disk.
 
 @item -sparsity
 
-Computes the sparsity and parallel matrix layout once per system.
+Computes the sparsity and parallel matrix layout once per system. When
+running with several MPI processes, this also makes @code{Integral}
+post-processing of global quantities distributed by default
 
 @item -sparsity-all
 
@@ -2362,8 +2364,12 @@ Idem, but consider only complex-valued tensor fields. Optional arguments
 are treated in the same way as for @code{ScalarField}.
 
 @item FoilWindingPolynomialBF
+@code{[@var{expression-cst-1},@var{expression-cst_2},@var{expression-cst-3},@var{expression-cst-4}]}
 
-Not documented yet.
+Returns the scalar basis function
+@code{((u - @var{expression-cst_2})/(@var{expression-cst-3} - @var{expression-cst_2}))^@var{expression-cst-1}}, 
+where @code{u} is @code{X[]}, @code{Y[]}, or @code{Z[]} for @var{expression-cst-4} equal to 0, 1, or 2.
+This is useful for foil winding polynomial basis functions.
 
 @end ftable
 
@@ -4771,6 +4777,7 @@ PostOperation @{
     < NoMesh @var{expression-cst}; > < AppendToExistingFile @var{expression-cst}; >
     < ResampleTime[@var{expression-cst}, @var{expression-cst}, @var{expression-cst}]; >
     < AppendTimeStepToFileName < @var{expression-cst} >; >
+    < Distributed < @var{expression-cst} >; >
     Operation @{
       < @var{post-operation-op}; > @dots{}
     @}
@@ -5022,6 +5029,17 @@ Output results for the specified imaginary time value(s) only.
 
 Output results for the last time step only (useful when calling a
 @code{PostOperation} directly in a @code{Resolution}, for example).
+
+@item Distributed
+
+Distributes the post-processing suboperations over all MPI processes (useful for
+very large number of post-processing suboperations). In this case, each suboperation is
+executed on a single, different MPI process. Default value is 0, meaning that all suboperations 
+are executed on all MPI processes, with integral quantities distributed over all processes
+when @code{-sparsity} is used. Do not use this option if @code{PostOperation} to be used for error
+estimation in @code{TimeLoopAdaptive} or @code{IterativeLoopN}. This is an expert-only option. An
+optional @var{expression-cst} can be given to enable or disable it,
+with the same meaning as omitting or specifying the keyword.
 
 @item AppendExpressionToFileName
 @var{expression}
