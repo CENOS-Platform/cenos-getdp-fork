@@ -231,6 +231,45 @@ void Get_DofOfElement(struct Element *Element,
 /*                                                       O f E l e m e n t  */
 /* ------------------------------------------------------------------------ */
 
+/* Accumulate one occurrence of the element's local entity 'i' (0-based), with
+   orientation 'sign', into group 'j'.
+
+   The group generator can legitimately return the same entity many times: gmsh
+   writes a cohomology cut as duplicated Line elements, one copy per unit of the
+   cochain coefficient, and Generate_GroupsOfEdges() deliberately keeps every
+   copy with its sign (it is what makes BF_GroupOfEdges sum the right weight).
+   Storing one array slot per occurrence overruns NumEntitiesInGroups[j][] as
+   soon as a coefficient is large -- e.g. a single tetrahedron of the terminal
+   cut of a 2x20-turn racetrack coil receives 164 occurrences against a bound of
+   NBR_MAX_ENTITIES_IN_ELEMENT (60). Accumulating into a signed coefficient is
+   mathematically identical to summing one contribution per occurrence, and is
+   bounded by the number of distinct entities of the element. */
+
+static bool Add_EntityInGroup(struct Element *Element, int j, int i, int sign)
+{
+  int k;
+
+  for(k = 0; k < Element->NbrEntitiesInGroups[j]; k++)
+    if(Element->NumEntitiesInGroups[j][k] == i + 1) break;
+
+  if(k == Element->NbrEntitiesInGroups[j]) {
+    if(k >= NBR_MAX_ENTITIES_IN_ELEMENT) {
+      Message::Error("Reached limit number of entities in a group of entities "
+                     "(%d): recompile with a higher value for "
+                     "NBR_MAX_ENTITIES_IN_ELEMENT",
+                     NBR_MAX_ENTITIES_IN_ELEMENT);
+      return false;
+    }
+    Element->NumEntitiesInGroups[j][k] = i + 1;
+    Element->CoefEntitiesInGroups[j][k] = 0;
+    Element->NbrEntitiesInGroups[j]++;
+  }
+
+  Element->CoefEntitiesInGroups[j][k] += sign;
+
+  return true;
+}
+
 void Get_GroupsOfElementaryEntitiesOfElement(
   struct Element *Element, int *StartingIndex, int Nbr_ElementaryEntities,
   int Num_ElementaryEntities[], struct BasisFunction *BasisFunction_P)
@@ -272,8 +311,7 @@ void Get_GroupsOfElementaryEntitiesOfElement(
             return;
           }
         }
-        Element->NumEntitiesInGroups[j][Element->NbrEntitiesInGroups[j]++] =
-          (Key_P->Int1 > 0) ? (i + 1) : -(i + 1);
+        if(!Add_EntityInGroup(Element, j, i, (Key_P->Int1 > 0) ? 1 : -1)) return;
       }
       else { /* For SubFunctions (basis functions for a global function) */
         Nbr_SubFunction = List_Nbr(BasisFunction_P->SubFunction);
@@ -295,10 +333,9 @@ void Get_GroupsOfElementaryEntitiesOfElement(
           }
         }
         for(i_SF = 0; i_SF < Nbr_SubFunction; i_SF++)
-          Element
-            ->NumEntitiesInGroups[j + i_SF]
-                                 [Element->NbrEntitiesInGroups[j + i_SF]++] =
-            (Key_P->Int1 > 0) ? (i + 1) : -(i + 1);
+          if(!Add_EntityInGroup(Element, j + i_SF, i,
+                                (Key_P->Int1 > 0) ? 1 : -1))
+            return;
       }
     }
   }
@@ -342,8 +379,9 @@ void Get_GroupsOfEdgesOnNodesOfElement(struct Element *Element,
         }
         Element->NbrEntitiesInGroups[j] = 0;
       }
-      Element->NumEntitiesInGroups[j][Element->NbrEntitiesInGroups[j]++] =
-        (Element->GeoElement->NumEdges[i] > 0) ? -(i + 1) : (i + 1);
+      if(!Add_EntityInGroup(Element, j, i,
+                            (Element->GeoElement->NumEdges[i] > 0) ? -1 : 1))
+        return;
       /*-        edge
     node 1 o--->---o node 2   =>   (Phi2 - Phi1) s12 ...
     -> minus sign associated with node 1 for positive edge from node 1 to node 2
@@ -362,8 +400,9 @@ void Get_GroupsOfEdgesOnNodesOfElement(struct Element *Element,
         }
         Element->NbrEntitiesInGroups[j] = 0;
       }
-      Element->NumEntitiesInGroups[j][Element->NbrEntitiesInGroups[j]++] =
-        (Element->GeoElement->NumEdges[i] > 0) ? (i + 1) : -(i + 1);
+      if(!Add_EntityInGroup(Element, j, i,
+                            (Element->GeoElement->NumEdges[i] > 0) ? 1 : -1))
+        return;
     }
   }
 }

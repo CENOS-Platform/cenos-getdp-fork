@@ -532,8 +532,10 @@ void SolvingAnalyse()
     PreResolutionIndex_L =
       List_Create(10, 10, sizeof(struct PreResolutionInfo));
 
+    if(Message::GetInfoCpu()) Message::MarkOperationCpu("Pre-Processing");
     Treatment_Preprocessing(Nbr_DefineSystem, DofData_P0, DefineSystem_P0,
                             GeoData_P0);
+    if(Message::GetInfoCpu()) Message::MarkOperationCpu("");
 
     Nbr_PreResolution = List_Nbr(PreResolutionIndex_L);
 
@@ -682,6 +684,7 @@ void SolvingAnalyse()
     Treatment_Operation(Resolution_P, Resolution_P->Operation, DofData_P0,
                         GeoData_P0, NULL, NULL);
 
+    Message::PrintOperationCpuSummary();
     Message::Cpu("");
     Message::Direct("E n d   P r o c e s s i n g");
   }

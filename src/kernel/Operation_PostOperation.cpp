@@ -51,6 +51,11 @@ void Operation_PostOperation(Resolution *Resolution_P, DofData *DofData_P0,
       PostProcessing_P = (struct PostProcessing *)List_Pointer(
         Problem_S.PostProcessing, PostOperation_P->PostProcessingIndex);
       Current.PostOpDataIndex = i;
+      if(Message::GetInfoCpu()) {
+        char key[256];
+        sprintf(key, "PostOperation[%s]", str);
+        Message::MarkOperationCpu(key);
+      }
       Treatment_PostOperation(
         Resolution_P, DofData_P0,
         (struct DefineSystem *)List_Pointer(Resolution_P->DefineSystem, 0),
