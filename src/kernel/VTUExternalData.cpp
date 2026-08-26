@@ -2,7 +2,8 @@
 #include "VTUExternalData.h"
 #include "Message.h"
 #include "OS.h"
-#include <cstring>	
+#include <cstring>
+#include <cstdint>
 
 // Class VTUExternalData definition
 

@@ -174,8 +174,9 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
           Current.y = PE->y[iNode];
           Current.z = PE->z[iNode];
           Cal_PostQuantity(PostQuantity_P, DefineQuantity_P0,
-                           QuantityStorage_P0, NULL, &Element, PE->u[iNode],
-                           PE->v[iNode], PE->w[iNode], &PE->Value[iNode]);
+                           QuantityStorage_P0, PSO_P->Distributed, NULL,
+                           &Element, PE->u[iNode], PE->v[iNode],
+                           PE->w[iNode], &PE->Value[iNode]);
           pd_set.setValueType(PE->Value[0].Type);
           std::vector<double> data_point(
             PE->Value[iNode].Val, PE->Value[iNode].Val + pd_set.data_size);
