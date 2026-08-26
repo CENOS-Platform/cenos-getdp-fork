@@ -203,7 +203,15 @@ static int _getLocalSize(int n = -1)
 void LinAlg_CreateVector(gVector *V, gSolver *Solver, int n, bool sequential)
 {
   if(sequential) {
-    _try(VecCreateSeq(PETSC_COMM_SELF, n, &V->V));
+    // Use Create+SetSizes+SetFromOptions (instead of the VecCreateSeq
+    // convenience call) so the vector type - and thus whether it lives on
+    // the CPU or a GPU - can be picked at runtime with e.g. "-vec_type cuda"
+    // when PETSc was built with GPU support. Defaults to a plain sequential
+    // CPU vector (VECSEQ), exactly as VecCreateSeq did, when no such option
+    // is given.
+    _try(VecCreate(PETSC_COMM_SELF, &V->V));
+    _try(VecSetSizes(V->V, n, n));
+    _try(VecSetFromOptions(V->V));
     V->haveSeq = 0; // no Vseq is created!
     return;
   }
@@ -274,7 +282,15 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
     for(auto p : *Current.DofData->SparsityPattern) {
       nnz[p.first]++;
     }
-    _try(MatCreateSeqAIJ(PETSC_COMM_SELF, n, m, 0, &nnz[0], &M->M));
+    // Create+SetSizes+SetFromOptions+SeqAIJSetPreallocation instead of the
+    // MatCreateSeqAIJ convenience call (which is exactly what it does
+    // internally) so "-mat_type" can select a GPU matrix type (e.g.
+    // "aijcusparse") when PETSc was built with GPU support, before
+    // preallocation happens. Defaults to plain SEQAIJ otherwise.
+    _try(MatCreate(PETSC_COMM_SELF, &M->M));
+    _try(MatSetSizes(M->M, n, m, n, m));
+    _try(MatSetFromOptions(M->M));
+    _try(MatSeqAIJSetPreallocation(M->M, 0, &nnz[0]));
     // PETSc (I)LU does not like matrices with empty (non assembled) diagonals
     for(int i = 0; i < n; i++) {
       PetscInt ti = i;
@@ -305,13 +321,12 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
           o_nnz[i]++;
       }
     }
-#if((PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR >= 3))
-    _try(MatCreateAIJ(MyComm, nloc, mloc, n, m, 0, &d_nnz[0],
-                      0, &o_nnz[0], &M->M));
-#else
-    _try(MatCreateMPIAIJ(MyComm, nloc, mloc, n, m, 0, &d_nnz[0],
-                         0, &o_nnz[0], &M->M));
-#endif
+    // See comment above: Create+SetSizes+SetFromOptions+SetPreallocation
+    // instead of MatCreateAIJ, so "-mat_type" can select a GPU type.
+    _try(MatCreate(MyComm, &M->M));
+    _try(MatSetSizes(M->M, nloc, mloc, n, m));
+    _try(MatSetFromOptions(M->M));
+    _try(MatMPIAIJSetPreallocation(M->M, 0, &d_nnz[0], 0, &o_nnz[0]));
   }
   else {
     // use heuristics
@@ -353,7 +368,12 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
       nnz.resize(n, prealloc);
       for(int i = 0; i < nonloc; i++)
         nnz[Current.DofData->NonLocalEquations[i] - 1] = prealloc_full;
-      _try(MatCreateSeqAIJ(PETSC_COMM_SELF, n, m, 0, &nnz[0], &M->M));
+      // See comment above: Create+SetSizes+SetFromOptions+SetPreallocation
+      // instead of MatCreateSeqAIJ, so "-mat_type" can select a GPU type.
+      _try(MatCreate(PETSC_COMM_SELF, &M->M));
+      _try(MatSetSizes(M->M, n, m, n, m));
+      _try(MatSetFromOptions(M->M));
+      _try(MatSeqAIJSetPreallocation(M->M, 0, &nnz[0]));
       // PETSc (I)LU does not like matrices with empty (non assembled) diagonals
       for(int i = 0; i < n; i++) {
         PetscInt ti = i;
@@ -365,13 +385,13 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
     }
     else {
       Message::Debug("... MPIAIJ matrix with heuristic allocation");
-#if((PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR >= 3))
-      _try(MatCreateAIJ(MyComm, nloc, mloc, n, m, prealloc, PETSC_NULL,
-                        prealloc, PETSC_NULL, &M->M));
-#else
-      _try(MatCreateMPIAIJ(MyComm, nloc, mloc, n, m, prealloc, PETSC_NULL,
-                           prealloc, PETSC_NULL, &M->M));
-#endif
+      // See comment above: Create+SetSizes+SetFromOptions+SetPreallocation
+      // instead of MatCreateAIJ, so "-mat_type" can select a GPU type.
+      _try(MatCreate(MyComm, &M->M));
+      _try(MatSetSizes(M->M, nloc, mloc, n, m));
+      _try(MatSetFromOptions(M->M));
+      _try(MatMPIAIJSetPreallocation(M->M, prealloc, PETSC_NULL, prealloc,
+                                     PETSC_NULL));
     }
   }
 
@@ -381,10 +401,11 @@ void LinAlg_CreateMatrix(gMatrix *M, gSolver *Solver, int n, int m, bool silent)
   // must allow (some) new allocations
   _try(MatSetOption(M->M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE));
 #endif
-
-  // override the default options with the ones from the option
-  // database (if any)
-  _try(MatSetFromOptions(M->M));
+  // (the matrix type is now selected earlier, via MatSetFromOptions() right
+  // after MatCreate()/MatSetSizes() and before preallocation, above - see
+  // comments in each branch - so no need to call it again here; doing so
+  // this late, after the matrix may already have been flush-assembled
+  // above, risks a spurious type-change error)
 }
 
 void LinAlg_DestroySolver(gSolver *Solver)
