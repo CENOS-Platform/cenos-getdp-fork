@@ -30,11 +30,12 @@ void Free_SearchGrid(struct Grid *Grid);
 
 void InWhichElement(struct Grid *Grid, List_T *ExcludeRegion,
                     struct Element *Element, int Flag, double x, double y,
-                    double z, double *u, double *v, double *w);
+                    double z, double *u, double *v, double *w,
+                    List_T *IncludeRegion = nullptr);
 
 int PointInElement(struct Element *Element, List_T *ExcludeRegion_L, double x,
                    double y, double z, double *u, double *v, double *w,
-                   double tol);
+                   double tol, List_T *IncludeRegion_L = nullptr);
 
 void xyz2uvwInAnElement(struct Element *Element, double x, double y, double z,
                         double *u, double *v, double *w);

@@ -1608,6 +1608,9 @@ struct PostSubOperation {
   List_T *ChangeOfValues;
   List_T *EvaluationPoints;
   int Gauss;
+  int RegionFilterIndex; /* optional region restriction for OnPoint/OnLine/
+                             OnPlane/OnBox re-interpolation searches; -1 =
+                             unrestricted (searches the whole mesh) */
   union {
     struct {
       int RegionIndex;

@@ -7493,6 +7493,7 @@ PostSubOperations :
       PostSubOperation_S.LegendPosition[1] = 0.;
       PostSubOperation_S.LegendPosition[2] = 0.;
       PostSubOperation_S.Gauss = 0;
+      PostSubOperation_S.RegionFilterIndex = -1;
       PostSubOperation_S.StoreInVariable = NULL;
       PostSubOperation_S.StoreInRegister = -1;
       PostSubOperation_S.StoreMinInRegister = -1;
@@ -8052,6 +8053,15 @@ PrintOption :
 	PostSubOperation_S.Dimension = (int)$3;
       else
 	vyyerror(0, "Wrong Dimension in Print");
+    }
+  | ',' tOnElementsOf GroupRHS
+    {
+      /* Restrict the point-in-element search (used by OnPoint, OnLine,
+         OnPlane and OnBox) to elements belonging to this Region. Without
+         this, a query point lying exactly on a boundary shared by two
+         Regions can non-deterministically resolve to either side. */
+      PostSubOperation_S.RegionFilterIndex =
+	Num_Group(&Group_S, strSave("PO_OnPointFilter"), $3);
     }
   | ',' tTimeStep ListOfFExpr
     {

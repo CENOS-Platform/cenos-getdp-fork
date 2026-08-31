@@ -137,12 +137,17 @@ static int PointInRefElement(struct Element *Element, double u, double v,
 
 int PointInElement(struct Element *Element, List_T *ExcludeRegion_L, double x,
                    double y, double z, double *u, double *v, double *w,
-                   double tol)
+                   double tol, List_T *IncludeRegion_L)
 {
   struct ElementBox ElementBox;
 
   if(ExcludeRegion_L)
     if(List_Search(ExcludeRegion_L, &Element->GeoElement->Region, fcmp_int)) {
+      return (0);
+    }
+
+  if(IncludeRegion_L)
+    if(!List_Search(IncludeRegion_L, &Element->GeoElement->Region, fcmp_int)) {
       return (0);
     }
 
@@ -370,7 +375,8 @@ static int InWhichBrick(struct Grid *pGrid, double X, double Y, double Z)
 
 void InWhichElement(struct Grid *Grid, List_T *ExcludeRegion_L,
                     struct Element *Element, int Dim, double x, double y,
-                    double z, double *u, double *v, double *w)
+                    double z, double *u, double *v, double *w,
+                    List_T *IncludeRegion_L)
 {
   /* Note: Il est garanti en sortie que les fcts de forme geometriques sont
      initialisees en u,v,w */
@@ -394,7 +400,8 @@ void InWhichElement(struct Grid *Grid, List_T *ExcludeRegion_L,
 
   if(LastGeoElement) {
     Element->GeoElement = LastGeoElement;
-    if(PointInElement(Element, ExcludeRegion_L, x, y, z, u, v, w, tol)) {
+    if(PointInElement(Element, ExcludeRegion_L, x, y, z, u, v, w, tol,
+                      IncludeRegion_L)) {
       return;
     }
   }
@@ -436,7 +443,8 @@ void InWhichElement(struct Grid *Grid, List_T *ExcludeRegion_L,
     for(i = 0; i < List_Nbr(Brick_P->p[dim]); i++) {
       Element->GeoElement =
         *(struct Geo_Element **)List_Pointer(Brick_P->p[dim], i);
-      if(PointInElement(Element, ExcludeRegion_L, x, y, z, u, v, w, tol)) {
+      if(PointInElement(Element, ExcludeRegion_L, x, y, z, u, v, w, tol,
+                        IncludeRegion_L)) {
         /*
         Message::Info("xyz(%g,%g,%g) -> Selected Element %d uvw(%g,%g,%g) "
                       "(%g,%g,%g)->(%g,%g,%g)", x, y, z, Element->Num, *u, *v, *w,

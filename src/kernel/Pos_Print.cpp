@@ -1021,7 +1021,8 @@ void Pos_PrintOnSection(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
   }                                                                            \
   else {                                                                       \
     InWhichElement(&Current.GeoData->Grid, NULL, &Element, PSO_P->Dimension,   \
-                   Current.x, Current.y, Current.z, &u, &v, &w);               \
+                   Current.x, Current.y, Current.z, &u, &v, &w,                \
+                   RegionFilter_L);                                            \
     Current.Region = Element.Region;                                           \
     if(Element.Num != NO_ELEMENT)                                              \
       PE->Index = Geo_GetGeoElementIndex(Element.GeoElement);                  \
@@ -1056,7 +1057,8 @@ void Pos_PrintOnSection(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
   }                                                                            \
   else {                                                                       \
     InWhichElement(&Current.GeoData->Grid, NULL, &Element, PSO_P->Dimension,   \
-                   Current.x, Current.y, Current.z, &u, &v, &w);               \
+                   Current.x, Current.y, Current.z, &u, &v, &w,                \
+                   RegionFilter_L);                                            \
     Current.Region = Element.Region;                                           \
     for(ts = 0; ts < NbTimeStep; ts++) {                                       \
       Pos_InitAllSolutions(PSO_P->TimeStep_L, ts);                             \
@@ -1087,6 +1089,17 @@ void Pos_PrintOnGrid(struct PostQuantity *NCPQ_P, struct PostQuantity *CPQ_P,
   float *Array = NULL;
   double u, v, w, Length, Normal[4] = {0., 0., 0., 0.};
   double X[4], Y[4], Z[4], S[4], N[4], tmp[3];
+
+  /* Optional Region restriction (OnElementsOf) for the point-in-element
+     search below, e.g. for OnPoint/OnLine/OnPlane/OnBox re-interpolation:
+     without it a query point lying exactly on a boundary shared by two
+     Regions can non-deterministically resolve to either side. */
+  List_T *RegionFilter_L = NULL;
+  if(PSO_P->RegionFilterIndex >= 0) {
+    struct Group *FilterGroup_P = (struct Group *)List_Pointer(
+      Problem_S.Group, PSO_P->RegionFilterIndex);
+    RegionFilter_L = FilterGroup_P->InitialList;
+  }
 
   Get_InitDofOfElement(&Element);
 
