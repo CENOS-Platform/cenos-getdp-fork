@@ -39,6 +39,7 @@ opt(BUILD_DYNAMIC "Enable dynamic GetDP executable (linked with shared lib)" OFF
 opt(BUILD_ANDROID "Enable Android NDK library target (experimental)" OFF)
 opt(BUILD_IOS "Enable iOS (ARM) library target (experimental)" OFF)
 opt(COVERAGE "Enable code coverage instrumentation (GCC/Clang only)" OFF)
+opt(CUDSS "Enable NVIDIA cuDSS GPU direct solve (requires PETSc, CUDA Toolkit and cuDSS)" OFF)
 opt(FORTRAN "Enable Fortran (needed for Arpack/Sparskit/Zitsol & Bessel)" ${DEFAULT})
 opt(GMSH "Enable Gmsh functions (for field interpolation)" ${DEFAULT})
 opt(GSL "Enable GSL functions (for some built-in functions)" ${DEFAULT})
@@ -100,8 +101,12 @@ if(NOT GETDP_RELEASE)
 endif()
 
 set(GETDP_VERSION "${GETDP_MAJOR_VERSION}.${GETDP_MINOR_VERSION}")
-#set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}${GETDP_EXTRA_VERSION}")
-set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}")
+# Re-enabled (was permanently commented out upstream) so that a custom
+# -DGETDP_EXTRA_VERSION=... passed at configure time actually shows up in
+# `getdp -version`/`-info`, e.g. "4.0.0+cenos.py310.1" - see cuda-build.md /
+# the versioning discussion for why. GETDP_RELEASE must also be set (see
+# above) or the dev-build git-hash logic will append "-git-<hash>" on top.
+set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}${GETDP_EXTRA_VERSION}")
 set(GETDP_SHORT_LICENSE "GNU General Public License")
 
 set(GETDP_API src/kernel/getdp.h)
@@ -557,6 +562,64 @@ if(ENABLE_PETSC)
       list(APPEND EXTERNAL_LIBRARIES ${PETSC_LIBS})
       list(APPEND EXTERNAL_INCLUDES ${PETSC_INC})
     endif()
+  endif()
+endif()
+
+# NVIDIA cuDSS GPU direct solve, hooked into LinAlg_PETSC.cpp as an opt-in
+# alternative to PETSc's (CPU-only) MUMPS direct solve. Deliberately built
+# without nvcc: cuDSS is called as a plain host API into a prebuilt library,
+# so only the CUDA runtime + cuDSS headers/libs are needed - see
+# src/kernel/LinAlg_CUDSS.cpp for details. Point CUDA_TOOLKIT_DIR/CUDSS_DIR
+# at the installs if they aren't found automatically, e.g.:
+#   -DCUDA_TOOLKIT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
+#   -DCUDSS_DIR="C:/Program Files/NVIDIA cuDSS/v0.8"
+if(ENABLE_CUDSS)
+  if(NOT HAVE_PETSC)
+    message(FATAL_ERROR "ENABLE_CUDSS requires ENABLE_PETSC")
+  endif()
+  if(NOT CUDA_TOOLKIT_DIR)
+    set(CUDA_TOOLKIT_DIR $ENV{CUDA_TOOLKIT_DIR})
+  endif()
+  if(NOT CUDSS_DIR)
+    set(CUDSS_DIR $ENV{CUDSS_DIR})
+  endif()
+  # Under Cygwin, find_library() mis-resolves a Windows-style "C:/..." PATHS
+  # entry (it isn't recognized as absolute, so it gets silently prepended
+  # with the build dir) even though find_path() copes with it fine. Convert
+  # to a Cygwin path first so both users typing "C:/..." and "/cygdrive/..."
+  # work; cygpath is a no-op on a path that's already POSIX-style.
+  if(CYGWIN)
+    execute_process(COMMAND cygpath -u "${CUDA_TOOLKIT_DIR}"
+                    OUTPUT_VARIABLE CUDA_TOOLKIT_DIR
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND cygpath -u "${CUDSS_DIR}"
+                    OUTPUT_VARIABLE CUDSS_DIR
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+  find_path(CUDA_INC "cuda_runtime.h" PATHS ${CUDA_TOOLKIT_DIR}/include
+            NO_DEFAULT_PATH)
+  find_path(CUDSS_INC "cudss.h" PATHS ${CUDSS_DIR}/include NO_DEFAULT_PATH)
+  # CUDA/cuDSS ship .lib import libraries on Windows, but this whole
+  # CMakeLists.txt forces CMAKE_FIND_LIBRARY_PREFIXES/SUFFIXES to "lib"/".a"
+  # up top (for the mingw/Linux static-link setup everything else here
+  # uses) - widen them just for these two finds, then restore.
+  set(_SAVED_FIND_LIBRARY_PREFIXES ${CMAKE_FIND_LIBRARY_PREFIXES})
+  set(_SAVED_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+  set(CMAKE_FIND_LIBRARY_PREFIXES "")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+  find_library(CUDART_LIB cudart PATHS ${CUDA_TOOLKIT_DIR}/lib/x64
+               NO_DEFAULT_PATH)
+  find_library(CUDSS_LIB cudss PATHS ${CUDSS_DIR}/lib/13 ${CUDSS_DIR}/lib
+               NO_DEFAULT_PATH)
+  set(CMAKE_FIND_LIBRARY_PREFIXES ${_SAVED_FIND_LIBRARY_PREFIXES})
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${_SAVED_FIND_LIBRARY_SUFFIXES})
+  if(CUDA_INC AND CUDART_LIB AND CUDSS_INC AND CUDSS_LIB)
+    set_config_option(HAVE_CUDSS "cuDSS")
+    list(APPEND EXTERNAL_INCLUDES ${CUDA_INC} ${CUDSS_INC})
+    list(APPEND EXTERNAL_LIBRARIES ${CUDSS_LIB} ${CUDART_LIB})
+  else()
+    message(FATAL_ERROR "ENABLE_CUDSS requested but CUDA/cuDSS were not "
+            "found - set CUDA_TOOLKIT_DIR and CUDSS_DIR (see comment above)")
   endif()
 endif()
 

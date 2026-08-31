@@ -51,5 +51,14 @@ set(SRC
         Pos_Element.cpp Pos_Format.cpp Pos_Iso.cpp Pos_Search.cpp
 )
 
+if(ENABLE_CUDSS)
+  # ENABLE_CUDSS is checked (not HAVE_CUDSS): at this point in the top-level
+  # CMakeLists.txt, cuDSS/CUDA detection hasn't run yet (it happens after the
+  # ENABLE_PETSC block, well after add_subdirectory(src/kernel)). If
+  # detection later fails, the top-level CMakeLists.txt aborts the whole
+  # configure with a FATAL_ERROR, so listing these sources here is harmless.
+  set(SRC ${SRC} LinAlg_CUDSS.cpp gs_stub.c)
+endif()
+
 file(GLOB HDR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.h)
 append_getdp_src(src/kernel "${SRC};${HDR}")

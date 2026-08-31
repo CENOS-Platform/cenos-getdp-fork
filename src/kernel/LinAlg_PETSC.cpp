@@ -27,6 +27,10 @@
 #include <slepc.h>
 #endif
 
+#if defined(HAVE_CUDSS)
+#include "LinAlg_CUDSS.h"
+#endif
+
 // FIXME: this dependency should be removed
 #include "ProData.h"
 #include "DofData.h"
@@ -51,6 +55,10 @@ extern struct CurrentData Current;
 //
 // for GMRES with ILU(0), with a restart of 500 and a stopping
 // criterion of 1e-6.
+//
+// If built with -DENABLE_CUDSS=ON, passing -gpu_cudss attempts an NVIDIA
+// cuDSS GPU direct solve instead of the CPU MUMPS/KSP path, falling back to
+// the latter automatically if no GPU is present or the solve fails.
 
 static MPI_Comm MyComm = PETSC_COMM_SELF;
 static PetscViewer MyPetscViewer;
@@ -1421,6 +1429,68 @@ static PetscErrorCode _myKspMonitor(KSP ksp, PetscInt it, PetscReal rnorm,
   return 0;
 }
 
+#if defined(HAVE_CUDSS)
+// Try a GPU direct solve of A*x = B via NVIDIA cuDSS, bypassing PETSc's own
+// KSP/MUMPS path entirely. A must already be assembled as a sequential
+// MATSEQAIJ (true for this build: PETSC_ARCH is a "seq" arch, no MPI). On
+// success X is filled in and this returns true; on any failure (no GPU,
+// driver issue, cuDSS error, unsupported matrix layout) it returns false
+// without touching X, so the caller falls through to the normal solve.
+static bool _cudssTrySolve(gMatrix *A, gVector *B, gVector *X)
+{
+#if !defined(PETSC_USE_COMPLEX)
+  // GetDP_CUDSS_SolveComplex only speaks this build's complex PetscScalar
+  // layout (interleaved re/im doubles); real builds always fall through.
+  return false;
+#else
+  PetscInt n, m;
+  _try(MatGetSize(A->M, &n, &m));
+  if(n != m || n <= 0) return false;
+
+  Mat mat = A->M;
+  PetscInt nrows = 0;
+  const PetscInt *ia = nullptr, *ja = nullptr;
+  PetscBool done = PETSC_FALSE;
+  _try(MatGetRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done));
+  if(!done || !ia || !ja) {
+    MatRestoreRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done);
+    return false;
+  }
+
+  const PetscScalar *avals = nullptr;
+  _try(MatSeqAIJGetArrayRead(mat, &avals));
+
+  PetscInt nnz = ia[nrows];
+  std::vector<int> rowPtr(nrows + 1), colInd(nnz);
+  for(PetscInt i = 0; i <= nrows; i++) rowPtr[i] = (int)ia[i];
+  for(PetscInt i = 0; i < nnz; i++) colInd[i] = (int)ja[i];
+
+  const PetscScalar *brhs = nullptr;
+  _try(VecGetArrayRead(B->V, &brhs));
+
+  std::vector<double> solution(2 * (size_t)nrows);
+
+  int rc = GetDP_CUDSS_SolveComplex(
+    (int)nrows, (int)nnz, rowPtr.data(), colInd.data(),
+    reinterpret_cast<const double *>(avals),
+    reinterpret_cast<const double *>(brhs), solution.data());
+
+  _try(VecRestoreArrayRead(B->V, &brhs));
+  _try(MatSeqAIJRestoreArrayRead(mat, &avals));
+  _try(MatRestoreRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done));
+
+  if(rc != 0) return false;
+
+  PetscScalar *xarr = nullptr;
+  _try(VecGetArray(X->V, &xarr));
+  memcpy(xarr, solution.data(), sizeof(PetscScalar) * (size_t)nrows);
+  _try(VecRestoreArray(X->V, &xarr));
+
+  return true;
+#endif
+}
+#endif
+
 static void _solve(gMatrix *A, gVector *B, gSolver *Solver, gVector *X,
                    int precond, int kspIndex)
 {
@@ -1445,6 +1515,23 @@ static void _solve(gMatrix *A, gVector *B, gSolver *Solver, gVector *X,
     Message::Warning("Zero-size system: skipping solve!");
     return;
   }
+
+#if defined(HAVE_CUDSS)
+  {
+    PetscBool useCudss = PETSC_FALSE;
+    PetscOptionsGetTruth(PETSC_NULL, "-gpu_cudss", &useCudss, PETSC_NULL);
+    if(useCudss) {
+      Message::Info("Attempting cuDSS GPU direct solve (N: %ld)", long(i));
+      if(_cudssTrySolve(A, B, X)) {
+        Message::Info("cuDSS GPU direct solve succeeded");
+        _fillseq(X);
+        return;
+      }
+      Message::Warning("cuDSS GPU direct solve failed - falling back to "
+                       "CPU solve (MUMPS/KSP)");
+    }
+  }
+#endif
 
   if(kspIndex != 0) Message::Info("Using solver index %d", kspIndex);
 
