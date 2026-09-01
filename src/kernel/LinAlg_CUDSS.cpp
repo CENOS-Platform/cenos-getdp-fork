@@ -54,11 +54,19 @@
 #define GETDP_CUDSS_VALUE_TYPE CUDA_C_64F
 #endif
 
+// All cuDSS/CUDA-related diagnostics from this file share the "GETDP-CUDSS:"
+// prefix (including the two below) so a caller (a wrapping script, a CI log
+// scanner, whatever actually invokes getdp.exe) can reliably find out
+// whether the GPU path was actually used by grepping for that one fixed
+// string, without depending on GetDP's own -v verbosity level - Message::
+// Info/Warning are gated by verbosity (off by default below -v 4 / -v 2
+// respectively) and are NOT used for any of this, deliberately: these lines
+// always print, regardless of -v. All go to stderr.
 #define CUDA_CHECK(call, msg)                                                 \
   do {                                                                        \
     cudaError_t _e = (call);                                                  \
     if(_e != cudaSuccess) {                                                   \
-      fprintf(stderr, "[cuDSS] CUDA error in %s: %s\n", msg,                  \
+      fprintf(stderr, "GETDP-CUDSS: CUDA error in %s: %s\n", msg,             \
              cudaGetErrorString(_e));                                        \
       goto cleanup;                                                           \
     }                                                                         \
@@ -68,7 +76,8 @@
   do {                                                                        \
     cudssStatus_t _s = (call);                                                \
     if(_s != CUDSS_STATUS_SUCCESS) {                                          \
-      fprintf(stderr, "[cuDSS] cuDSS error in %s: status=%d\n", msg, (int)_s);\
+      fprintf(stderr, "GETDP-CUDSS: cuDSS error in %s: status=%d\n", msg,     \
+             (int)_s);                                                       \
       goto cleanup;                                                           \
     }                                                                         \
   } while(0)
@@ -125,6 +134,39 @@ int GetDP_CUDSS_SolveComplex(int n, int nnz, const int *rowPtr,
 
   CUDSS_CHECK(cudssCreate(&handle), "cudssCreate");
   haveHandle = true;
+
+  // Guard against a real danger, not a hypothetical one: cuDSS's C exports
+  // aren't name-mangled with their signature, so Windows will happily
+  // resolve e.g. cudssMatrixCreateCsr() against a *loaded* cudss64_0.dll
+  // whose actual argument list doesn't match what this file was *compiled*
+  // against - no load-time error, just undefined behavior at the first real
+  // call (a crash, or worse, a silently wrong solve). This has already
+  // happened once in practice this session (0.7.x vs 0.8 - see the
+  // CUDSS_VERSION gate below cudssMatrixCreateCsr()). cudssGetProperty() is
+  // identical across both versions, so it's safe to call unconditionally to
+  // ask the *loaded* library what it actually is, and compare against what
+  // was compiled in (CUDSS_VERSION_MAJOR/MINOR, from cudss.h): a MAJOR.MINOR
+  // mismatch means "don't trust this", so bail out to the normal MUMPS
+  // fallback instead of risking the mismatched call. PATCH-level
+  // differences are left alone (bugfix releases, not API changes).
+  {
+    int loadedMajor = -1, loadedMinor = -1, loadedPatch = -1;
+    CUDSS_CHECK(cudssGetProperty(MAJOR_VERSION, &loadedMajor),
+               "cudssGetProperty MAJOR_VERSION");
+    CUDSS_CHECK(cudssGetProperty(MINOR_VERSION, &loadedMinor),
+               "cudssGetProperty MINOR_VERSION");
+    CUDSS_CHECK(cudssGetProperty(PATCH_LEVEL, &loadedPatch),
+               "cudssGetProperty PATCH_LEVEL");
+    if(loadedMajor != CUDSS_VERSION_MAJOR || loadedMinor != CUDSS_VERSION_MINOR) {
+      fprintf(stderr,
+             "GETDP-CUDSS: version-mismatch built=%d.%d.%d loaded=%d.%d.%d "
+             "- falling back to MUMPS\n",
+             CUDSS_VERSION_MAJOR, CUDSS_VERSION_MINOR, CUDSS_VERSION_PATCH,
+             loadedMajor, loadedMinor, loadedPatch);
+      goto cleanup;
+    }
+  }
+
   CUDSS_CHECK(cudssSetStream(handle, stream), "cudssSetStream");
 
   CUDSS_CHECK(cudssConfigCreate(&solverConfig), "cudssConfigCreate");
@@ -181,6 +223,14 @@ int GetDP_CUDSS_SolveComplex(int n, int nnz, const int *rowPtr,
   CUDA_CHECK(cudaStreamSynchronize(stream), "cudaStreamSynchronize");
   CUDA_CHECK(cudaMemcpy(solution, d_x, (size_t)n * sizeof(cuDoubleComplex),
                        cudaMemcpyDeviceToHost), "memcpy solution");
+
+  // Only reports that cuDSS's own factor+solve succeeded - the caller
+  // (_cudssTrySolve() in LinAlg_PETSC.cpp) still runs its own residual
+  // sanity check before actually accepting this solution, and prints its
+  // own "GETDP-CUDSS: accepted"/"rejected" line reflecting that final
+  // decision. This line alone is not proof the result was used.
+  fprintf(stderr, "GETDP-CUDSS: solve-succeeded version=%d.%d.%d\n",
+         CUDSS_VERSION_MAJOR, CUDSS_VERSION_MINOR, CUDSS_VERSION_PATCH);
 
   result = 0;
 

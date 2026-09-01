@@ -1533,7 +1533,23 @@ static bool _cudssTrySolve(gMatrix *A, gVector *B, gVector *X)
   _try(MatSeqAIJRestoreArrayRead(mat, &avals));
   _try(MatRestoreRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done));
 
-  if(!solutionOk) return false;
+  // Final, always-printed (not gated by -v, unlike Message::Info/Warning
+  // elsewhere in this function) one-line verdict on whether cuDSS actually
+  // ended up being used for this solve - shares the "GETDP-CUDSS:" prefix
+  // with LinAlg_CUDSS.cpp's own lines so a caller can grep for just that
+  // string regardless of which of the two files produced the line.
+  if(!solutionOk) {
+    if(rc == 0) {
+      // GetDP_CUDSS_SolveComplex() itself reported success, but the
+      // residual check above rejected the result - distinct from a solve
+      // failure, which already printed its own "GETDP-CUDSS:" line in
+      // LinAlg_CUDSS.cpp (version-mismatch, CUDA error, or cuDSS error).
+      fprintf(stderr, "GETDP-CUDSS: rejected (residual check failed) - "
+                      "falling back to MUMPS\n");
+    }
+    return false;
+  }
+  fprintf(stderr, "GETDP-CUDSS: accepted\n");
 
   PetscScalar *xarr = nullptr;
   _try(VecGetArray(X->V, &xarr));
