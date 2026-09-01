@@ -20,6 +20,15 @@ EnsightExternalData::EnsightExternalData() {}
 
 EnsightExternalData::~EnsightExternalData() {}
 
+static int EnsightNodeSlot(int elementType, int iSlot)
+{
+  if(elementType == TETRAHEDRON_2) {
+    static const int perm[10] = {0, 1, 2, 3, 4, 5, 6, 7, 9, 8};
+    return perm[iSlot];
+  }
+  return iSlot;
+}
+
 // Use always with LastTimeStep option!!! Only one <group-id> in each
 // PrintExternal
 // Example 			PrintExternal[ PointData {<post-quantity-id>}, OnElementsOf
@@ -170,9 +179,10 @@ void EnsightExternalData::writeGeometryBinary(std::string fname)
       }
       // print nodes of elements
       for(auto el_index : elementGroup.second) {
-        for(auto n : Ensight_Case.parts[i]
-                       .elements[el_index + element_id_offset]
-                       .nodes) {
+        const std::vector<int> &elNodes =
+          Ensight_Case.parts[i].elements[el_index + element_id_offset].nodes;
+        for(size_t iSlot = 0; iSlot < elNodes.size(); iSlot++) {
+          int n = elNodes[EnsightNodeSlot(elementGroup.first, (int)iSlot)];
           WriteIntToFile(NodeIdToOrder[n] - node_offset, fd);
         }
       }
@@ -338,9 +348,10 @@ void EnsightExternalData::writeGeometryASCII(std::string fname)
       }
       // print nodes of elements
       for(auto el_index : elementGroup.second) {
-        for(auto n : Ensight_Case.parts[i]
-                       .elements[el_index + element_id_offset]
-                       .nodes) {
+        const std::vector<int> &elNodes =
+          Ensight_Case.parts[i].elements[el_index + element_id_offset].nodes;
+        for(size_t iSlot = 0; iSlot < elNodes.size(); iSlot++) {
+          int n = elNodes[EnsightNodeSlot(elementGroup.first, (int)iSlot)];
           fprintf(fd, "%d ", NodeIdToOrder[n] - node_offset);
         }
         fprintf(fd, "\n");
