@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include <complex>
 #include <string>
 #include <cstring>
@@ -1456,34 +1457,87 @@ static bool _cudssTrySolve(gMatrix *A, gVector *B, gVector *X)
     MatRestoreRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done);
     return false;
   }
+  // MatRestoreRowIJ() zeroes out whatever PetscInt* it's given for its "n"
+  // argument (see MatRestoreRowIJ() in PETSc's src/mat/interface/matrix.c),
+  // so `nrows` itself must not be used again below - it's only kept around
+  // as the restore call's in/out argument. `n` (== nrows here, both being
+  // the row count of the same square matrix, from MatGetSize() above) is
+  // used everywhere else instead, since it isn't touched by the restore.
 
   const PetscScalar *avals = nullptr;
   _try(MatSeqAIJGetArrayRead(mat, &avals));
 
-  PetscInt nnz = ia[nrows];
-  std::vector<int> rowPtr(nrows + 1), colInd(nnz);
-  for(PetscInt i = 0; i <= nrows; i++) rowPtr[i] = (int)ia[i];
+  PetscInt nnz = ia[n];
+  std::vector<int> rowPtr(n + 1), colInd(nnz);
+  for(PetscInt i = 0; i <= n; i++) rowPtr[i] = (int)ia[i];
   for(PetscInt i = 0; i < nnz; i++) colInd[i] = (int)ja[i];
 
   const PetscScalar *brhs = nullptr;
   _try(VecGetArrayRead(B->V, &brhs));
 
-  std::vector<double> solution(2 * (size_t)nrows);
+  std::vector<double> solution(2 * (size_t)n);
 
   int rc = GetDP_CUDSS_SolveComplex(
-    (int)nrows, (int)nnz, rowPtr.data(), colInd.data(),
+    (int)n, (int)nnz, rowPtr.data(), colInd.data(),
     reinterpret_cast<const double *>(avals),
     reinterpret_cast<const double *>(brhs), solution.data());
+
+  // Sanity-check the result before trusting it. cuDSS's own status codes
+  // (checked via `rc` below) only report whether its ANALYSIS/FACTORIZATION/
+  // SOLVE phases ran without an internal error - they are not a guarantee
+  // that the factorization was well-conditioned or that x actually solves
+  // A*x=b. Unlike PETSc's own KSP path (which has its own convergence
+  // check), nothing else in this function verifies the solution, so a
+  // silently-bad GPU factorization would otherwise be copied into X and
+  // reported as a successful solve. Compute the relative residual (and
+  // check for non-finite entries) here, using the CSR/RHS data already
+  // extracted above, while it's still valid.
+  bool solutionOk = (rc == 0);
+  if(solutionOk) {
+    const double *aval_d = reinterpret_cast<const double *>(avals);
+    const double *b_d = reinterpret_cast<const double *>(brhs);
+    double residNorm2 = 0.0, bNorm2 = 0.0;
+    for(PetscInt row = 0; row < n && solutionOk; row++) {
+      double reAcc = 0.0, imAcc = 0.0;
+      for(PetscInt k = rowPtr[row]; k < rowPtr[row + 1]; k++) {
+        int col = colInd[k];
+        double aRe = aval_d[2 * k], aIm = aval_d[2 * k + 1];
+        double xRe = solution[2 * (size_t)col], xIm = solution[2 * (size_t)col + 1];
+        if(!std::isfinite(xRe) || !std::isfinite(xIm)) { solutionOk = false; break; }
+        reAcc += aRe * xRe - aIm * xIm; // Re[(aRe+i*aIm)*(xRe+i*xIm)]
+        imAcc += aRe * xIm + aIm * xRe; // Im[(aRe+i*aIm)*(xRe+i*xIm)]
+      }
+      double rRe = reAcc - b_d[2 * row], rIm = imAcc - b_d[2 * row + 1];
+      residNorm2 += rRe * rRe + rIm * rIm;
+      bNorm2 += b_d[2 * row] * b_d[2 * row] + b_d[2 * row + 1] * b_d[2 * row + 1];
+    }
+    if(solutionOk) {
+      const double relTol = 1e-6;
+      double bNorm = std::sqrt(bNorm2);
+      double relResidual = std::sqrt(residNorm2) / (bNorm > 0.0 ? bNorm : 1.0);
+      // Deliberately written so a NaN relResidual (e.g. from a NaN bNorm)
+      // fails this check rather than passing it.
+      if(!(relResidual < relTol)) {
+        Message::Warning("cuDSS solution failed residual check (relative "
+                         "||Ax-b|| = %g, tolerance %g) - discarding",
+                         relResidual, relTol);
+        solutionOk = false;
+      }
+    }
+    else {
+      Message::Warning("cuDSS solution contains non-finite values - discarding");
+    }
+  }
 
   _try(VecRestoreArrayRead(B->V, &brhs));
   _try(MatSeqAIJRestoreArrayRead(mat, &avals));
   _try(MatRestoreRowIJ(mat, 0, PETSC_FALSE, PETSC_FALSE, &nrows, &ia, &ja, &done));
 
-  if(rc != 0) return false;
+  if(!solutionOk) return false;
 
   PetscScalar *xarr = nullptr;
   _try(VecGetArray(X->V, &xarr));
-  memcpy(xarr, solution.data(), sizeof(PetscScalar) * (size_t)nrows);
+  memcpy(xarr, solution.data(), sizeof(PetscScalar) * (size_t)n);
   _try(VecRestoreArray(X->V, &xarr));
 
   return true;

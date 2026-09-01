@@ -599,6 +599,29 @@ if(ENABLE_CUDSS)
   find_path(CUDA_INC "cuda_runtime.h" PATHS ${CUDA_TOOLKIT_DIR}/include
             NO_DEFAULT_PATH)
   find_path(CUDSS_INC "cudss.h" PATHS ${CUDSS_DIR}/include NO_DEFAULT_PATH)
+  # Some pip-distributed "nvidia-cuda-runtime" wheels (as opposed to the
+  # standalone CUDA Toolkit installer) flatten include/crt/*.h into plain
+  # include/*.h, but cuda_runtime.h still expects to find them under
+  # "crt/". Detect that layout and, only then, add a small local shim
+  # directory (src/kernel/cuda_crt_shim) ahead of CUDA_INC that redirects
+  # "crt/<name>.h" back to the real (flattened) header via #include_next -
+  # a standalone Toolkit install already has a real crt/ subdirectory and
+  # must NOT get this shim (it would shadow the real headers with redirects
+  # to a bare filename that doesn't exist there).
+  set(CUDA_CRT_SHIM_DIRS)
+  if(CUDA_INC)
+    find_path(CUDA_HAS_CRT_SUBDIR "crt/host_config.h" PATHS ${CUDA_INC}
+              NO_DEFAULT_PATH)
+    if(NOT CUDA_HAS_CRT_SUBDIR)
+      message(STATUS "CUDA include dir has no crt/ subdirectory (pip-wheel "
+              "layout) - adding src/kernel/cuda_crt_shim redirect")
+      # Must be added to EXTERNAL_INCLUDES *ahead of* CUDA_INC (see below) so
+      # the shim's #include_next falls through to the real (flattened)
+      # headers in CUDA_INC, rather than searching whatever - if anything -
+      # comes after the shim dir in the final include order.
+      set(CUDA_CRT_SHIM_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src/kernel/cuda_crt_shim)
+    endif()
+  endif()
   # CUDA/cuDSS ship .lib import libraries on Windows, but this whole
   # CMakeLists.txt forces CMAKE_FIND_LIBRARY_PREFIXES/SUFFIXES to "lib"/".a"
   # up top (for the mingw/Linux static-link setup everything else here
@@ -615,7 +638,7 @@ if(ENABLE_CUDSS)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ${_SAVED_FIND_LIBRARY_SUFFIXES})
   if(CUDA_INC AND CUDART_LIB AND CUDSS_INC AND CUDSS_LIB)
     set_config_option(HAVE_CUDSS "cuDSS")
-    list(APPEND EXTERNAL_INCLUDES ${CUDA_INC} ${CUDSS_INC})
+    list(APPEND EXTERNAL_INCLUDES ${CUDA_CRT_SHIM_DIRS} ${CUDA_INC} ${CUDSS_INC})
     list(APPEND EXTERNAL_LIBRARIES ${CUDSS_LIB} ${CUDART_LIB})
   else()
     message(FATAL_ERROR "ENABLE_CUDSS requested but CUDA/cuDSS were not "

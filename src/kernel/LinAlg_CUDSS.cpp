@@ -35,6 +35,25 @@
 
 #include "LinAlg_CUDSS.h"
 
+// cuDSS's C API changed shape between 0.7.x and 0.8: 0.8 introduced its own
+// cudssDataType_t enum (CUDSS_R_32I/CUDSS_C_64F/...) and split
+// cudssMatrixCreateCsr()'s single "indexType" into separate
+// "offsetType"/"indexType" parameters (one more argument than 0.7.x); 0.7.x
+// instead takes the standard CUDA cudaDataType_t enum (CUDA_R_32I/
+// CUDA_C_64F/..., from <library_types.h>, already pulled in transitively)
+// and a single index type covering both row offsets and column indices.
+// Support both so this file builds against either an NVIDIA-installer cuDSS
+// (0.8, as verified on the original dev machine) or the pip-distributed
+// nvidia-cudss-cu13 package (0.7.1.6, as actually shipped alongside the RF
+// app) without needing two copies of this file.
+#if CUDSS_VERSION >= 800
+#define GETDP_CUDSS_INDEX_TYPE CUDSS_R_32I
+#define GETDP_CUDSS_VALUE_TYPE CUDSS_C_64F
+#else
+#define GETDP_CUDSS_INDEX_TYPE CUDA_R_32I
+#define GETDP_CUDSS_VALUE_TYPE CUDA_C_64F
+#endif
+
 #define CUDA_CHECK(call, msg)                                                 \
   do {                                                                        \
     cudaError_t _e = (call);                                                  \
@@ -115,11 +134,11 @@ int GetDP_CUDSS_SolveComplex(int n, int nnz, const int *rowPtr,
 
   {
     int64_t nn = n;
-    CUDSS_CHECK(cudssMatrixCreateDn(&b, nn, 1, nn, d_rhs, CUDSS_C_64F,
+    CUDSS_CHECK(cudssMatrixCreateDn(&b, nn, 1, nn, d_rhs, GETDP_CUDSS_VALUE_TYPE,
                                     CUDSS_LAYOUT_COL_MAJOR),
                "cudssMatrixCreateDn b");
     haveB = true;
-    CUDSS_CHECK(cudssMatrixCreateDn(&x, nn, 1, nn, d_x, CUDSS_C_64F,
+    CUDSS_CHECK(cudssMatrixCreateDn(&x, nn, 1, nn, d_x, GETDP_CUDSS_VALUE_TYPE,
                                     CUDSS_LAYOUT_COL_MAJOR),
                "cudssMatrixCreateDn x");
     haveX = true;
@@ -128,12 +147,24 @@ int GetDP_CUDSS_SolveComplex(int n, int nnz, const int *rowPtr,
     // including symmetric ones (just without exploiting symmetry for
     // extra speed/memory). Revisit with CUDSS_MTYPE_SYMMETRIC/SPD once a
     // caller can reliably tell us the matrix is known-symmetric.
+#if CUDSS_VERSION >= 800
+    // 0.8: separate offsetType (row pointers) / indexType (column indices).
     CUDSS_CHECK(
       cudssMatrixCreateCsr(&A, nn, nn, nnz, d_rowPtr, nullptr, d_colInd,
-                           d_values, CUDSS_R_32I, CUDSS_R_32I, CUDSS_C_64F,
+                           d_values, GETDP_CUDSS_INDEX_TYPE,
+                           GETDP_CUDSS_INDEX_TYPE, GETDP_CUDSS_VALUE_TYPE,
                            CUDSS_MTYPE_GENERAL, CUDSS_MVIEW_FULL,
                            CUDSS_BASE_ZERO),
       "cudssMatrixCreateCsr");
+#else
+    // < 0.8: a single indexType covers both row offsets and column indices.
+    CUDSS_CHECK(
+      cudssMatrixCreateCsr(&A, nn, nn, nnz, d_rowPtr, nullptr, d_colInd,
+                           d_values, GETDP_CUDSS_INDEX_TYPE,
+                           GETDP_CUDSS_VALUE_TYPE, CUDSS_MTYPE_GENERAL,
+                           CUDSS_MVIEW_FULL, CUDSS_BASE_ZERO),
+      "cudssMatrixCreateCsr");
+#endif
     haveA = true;
   }
 
