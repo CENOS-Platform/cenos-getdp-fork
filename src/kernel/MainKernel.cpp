@@ -13,6 +13,7 @@
 #include "ProData.h"
 #include "ProParser.h"
 #include "SolvingAnalyse.h"
+#include "EnsightExternalData.h"
 #include "LinAlg.h"
 #include "OS.h"
 #include "MallocUtils.h"
@@ -797,6 +798,8 @@ int MainKernel(int argc, char *argv[])
   }
 
   if(Flag_PRE || Flag_CAL || Flag_POS) SolvingAnalyse();
+
+  EnsightExternalData::FlushDeferred(); // ENSIGHT geometry/case once, not per sub-operation
 
   // PETSc cannot be finalized if it will be re-initialized again in the same
   // process - so just don't finalize it if we use getdp as a library with a

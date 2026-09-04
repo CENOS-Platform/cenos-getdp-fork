@@ -45,6 +45,17 @@ public:
 
   WriteType wtype;
 
+  // captured on the main thread; Current is mutated while a write is in flight
+  bool stepTypeIsFreq = false;
+
+  // Background writer: single thread, so Ensight_Case stays single-threaded.
+  // Callers that mutate Ensight_Case must JoinWrites() first.
+  // GETDP_SYNC_WRITE=1 writes inline.
+  static void QueueWrite(PostExternalData *pd, const std::string &fname);
+  static void JoinWrites();
+  // must run before exit: a joinable std::thread destroyed => std::terminate
+  static void StopWriter();
+
   // unordered map showed about 15% better performance in tests than map
   std::unordered_map<int, int> node_map; // map to store new node ids
   std::unordered_map<int, std::vector<int> >

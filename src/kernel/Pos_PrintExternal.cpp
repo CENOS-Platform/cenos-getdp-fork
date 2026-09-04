@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iostream>
 #include "Pos_PrintExternal.h"
+#include <string.h>
 #include "Pos_Formulation.h"
 #include "Message.h"
 #include "Get_DofOfElement.h"
@@ -79,9 +80,13 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
 
   /* Create the list of PostElements */
 
-  /* Generate all PostElements */
-  for(int iGeo = 0; iGeo < Geo_GetNbrGeoElements(); iGeo++) {
-    List_T *PostElement_L = List_Create(10, 10, sizeof(struct PostElement *));
+  /* One PostElement list per call, shared by the geometry registration and by
+   * every quantity (previously rebuilt per quantity: N+1 mesh scans for N). */
+  int NbrGeoAll = Geo_GetNbrGeoElements();
+  List_T *PostElement_L =
+    List_Create(NbrGeoAll / 10 + 10, NbrGeoAll / 10 + 10,
+                sizeof(struct PostElement *));
+  for(int iGeo = 0; iGeo < NbrGeoAll; iGeo++) {
     Element.GeoElement = Geo_GetGeoElement(iGeo);
     if((Group_P->Type != ELEMENTLIST &&
         List_Search(Region_L, &Element.GeoElement->Region, fcmp_int)) ||
@@ -90,14 +95,11 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
       Fill_PostElement(Element.GeoElement, PostElement_L, iGeo, PSO_P->Depth,
                        PSO_P->Skin, 0, 0, PSO_P->Gauss);
     }
-
-    for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
-      struct PostElement *PE =
-        *(struct PostElement **)List_Pointer(PostElement_L, iPost);
-      post_data->addElement(PE, Group_P->Num);
-      Destroy_PostElement(PE);
-    }
-    List_Delete(PostElement_L);
+  }
+  for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+    struct PostElement *PE =
+      *(struct PostElement **)List_Pointer(PostElement_L, iPost);
+    post_data->addElement(PE, Group_P->Num);
   }
 
   // outer time loop
@@ -141,24 +143,6 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
                          // optional name the one defined in PrintExternal with
                          // option: PartName "include_your_name"
 
-      int NbrGeo = Geo_GetNbrGeoElements();
-      List_T *PostElement_L =
-        List_Create(Store ? NbrGeo / 10 : 10, Store ? NbrGeo / 10 : 10,
-                    sizeof(struct PostElement *));
-
-      for(int iGeo = 0; iGeo < Geo_GetNbrGeoElements(); iGeo++) {
-        Element.GeoElement = Geo_GetGeoElement(iGeo);
-        if((Group_P->Type != ELEMENTLIST &&
-            List_Search(Region_L, &Element.GeoElement->Region, fcmp_int)) ||
-           (Group_P->Type == ELEMENTLIST &&
-            Check_IsEntityInExtendedGroup(Group_P, Element.GeoElement->Num,
-                                          0))) {
-          Fill_PostElement(Element.GeoElement, PostElement_L, iGeo,
-                           PSO_P->Depth, PSO_P->Skin, 0, 0, PSO_P->Gauss);
-        }
-
-      } /* for iGeo */
-
       for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
         struct PostElement *PE =
           *(struct PostElement **)List_Pointer(PostElement_L, iPost);
@@ -184,10 +168,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
           pd_set.addDataRegion(post_data->node_map[PE->NumNodes[iNode]],
                                data_point, Group_P->Num);
         }
-        if(!PSO_P->Smoothing) {
-          Destroy_PostElement(PE);
-        } // Do not destroy elements if you are going to SMOOTH the data
-      }
+      } /* PEs reused across quantities, freed at end of call */
 
       /* Perform Smoothing */ // Smoothing taken from Pos_Print
 
@@ -243,21 +224,25 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
             pd_set.addDataRegion(post_data->node_map[PE->NumNodes[iNode]],
                                  data_point, Element.GeoElement->Region);
           }
-          Destroy_PostElement(PE);
         }
         Tree_Delete(xyzv_T);
       } /* if Smoothing */
 
-      List_Delete(PostElement_L);
       tdata.point_data.push_back(pd_set);
     }
     post_data->data_sets.push_back(tdata);
   }
 
-  std::string filename = Fix_RelativePath(PSO_P->FileOut, Name_Path);
-  post_data->write(filename);
+  for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+    Destroy_PostElement(
+      *(struct PostElement **)List_Pointer(PostElement_L, iPost));
+  }
+  List_Delete(PostElement_L);
 
-  delete post_data;
+  std::string filename = Fix_RelativePath(PSO_P->FileOut, Name_Path);
+  // read Current on this thread; the writer must not touch it
+  post_data->stepTypeIsFreq = (strcmp(Current.Step_Type, "Freq") == 0);
+  PostExternalData::QueueWrite(post_data, filename); // takes ownership
 
   /*
       for (int iTime = 0 ; iTime < NbrTimeStep ; iTime++)
@@ -300,6 +285,7 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
 
 void Pos_PrintExternalStepType(struct PostSubOperation *PSO_P)
 {
+  PostExternalData::JoinWrites(); // mutates Ensight_Case below
   int NbrTimeStep, iTime;
   struct Value Value;
   char *str = PSO_P->Case.Expression.String;
@@ -313,6 +299,7 @@ void Pos_PrintExternalStepType(struct PostSubOperation *PSO_P)
 
 void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P)
 {
+  PostExternalData::JoinWrites(); // mutates Ensight_Case below
   // if multiple From Previous command is called again, check if there already
   // are values before adding to Ensight Case
   // This IF ensures that start index and time values are read only once

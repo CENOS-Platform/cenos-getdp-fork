@@ -4,6 +4,11 @@
 #include <list>
 
 class EnsightExternalData : public PostExternalData {
+public:
+  static int g_pendingGeomStep;
+  static bool g_deferCase;
+  static std::string g_deferName;
+  static void FlushDeferred();
 private:
   std::map<int, std::string> ToEnsightElementType = {
     {POINT_ELEMENT, "point"},   {LINE, "bar2"},
@@ -48,7 +53,7 @@ public:
   void writeVariableASCII(std::string fname);
   void writeVariableBinary(std::string fname);
   void writeGeometryASCII(std::string fname);
-  void writeGeometryBinary(std::string fname);
+  void writeGeometryBinary(std::string fname, int stepOverride = -1);
 
   void groupParts();
   void groupElementTypes(elementsInPart &el_part);

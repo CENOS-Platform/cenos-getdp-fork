@@ -1,5 +1,11 @@
 
 #include "PostExternalData.h"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
+#include <utility>
+#include <stdlib.h>
 #include "Message.h"
 #include "GeoData.h"
 #include "Get_Geometry.h"
@@ -89,4 +95,84 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
 	  node_vector.push_back(id);
 	}
   }
+}
+
+
+/* ------------------------------------------------------------------------ */
+/*  Background writer: one thread, FIFO, owns the queued PostExternalData    */
+/* ------------------------------------------------------------------------ */
+
+namespace {
+  std::thread g_writer;
+  std::mutex g_mtx;
+  std::condition_variable g_cvJob, g_cvIdle;
+  std::deque<std::pair<PostExternalData *, std::string> > g_queue;
+  bool g_busy = false;
+  bool g_started = false;
+
+  void writerLoop()
+  {
+    for(;;) {
+      std::pair<PostExternalData *, std::string> job(nullptr, std::string());
+      {
+        std::unique_lock<std::mutex> lk(g_mtx);
+        g_cvJob.wait(lk, [] { return !g_queue.empty(); });
+        job = g_queue.front();
+        g_queue.pop_front();
+        if(!job.first) { // poison pill: stop
+          g_busy = false;
+          g_cvIdle.notify_all();
+          return;
+        }
+        g_busy = true;
+      }
+      job.first->write(job.second);
+      delete job.first;
+      {
+        std::lock_guard<std::mutex> lk(g_mtx);
+        g_busy = false;
+        g_cvIdle.notify_all();
+      }
+    }
+  }
+}
+
+void PostExternalData::QueueWrite(PostExternalData *pd, const std::string &fname)
+{
+  if(!pd) return;
+  if(getenv("GETDP_SYNC_WRITE")) { // inline fallback
+    pd->write(fname);
+    delete pd;
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lk(g_mtx);
+    if(!g_started) {
+      g_started = true;
+      g_writer = std::thread(writerLoop);
+    }
+    g_queue.push_back(std::make_pair(pd, fname));
+  }
+  g_cvJob.notify_one();
+}
+
+void PostExternalData::JoinWrites()
+{
+  std::unique_lock<std::mutex> lk(g_mtx);
+  if(!g_started) return;
+  g_cvIdle.wait(lk, [] { return g_queue.empty() && !g_busy; });
+}
+
+void PostExternalData::StopWriter()
+{
+  {
+    std::lock_guard<std::mutex> lk(g_mtx);
+    if(!g_started) return;
+    g_queue.push_back(
+      std::make_pair((PostExternalData *)nullptr, std::string())); // stop
+  }
+  g_cvJob.notify_one();
+  if(g_writer.joinable()) g_writer.join();
+  std::lock_guard<std::mutex> lk(g_mtx);
+  g_started = false;
 }
