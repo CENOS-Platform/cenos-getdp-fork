@@ -75,14 +75,19 @@ set(CMAKE_C_STANDARD 99)
 set(GETDP_MAJOR_VERSION 4)
 set(GETDP_MINOR_VERSION 0)
 set(GETDP_PATCH_VERSION 0)
+set(GETDP_CENOS_REVISION 1)
+
 if(NOT GETDP_EXTRA_VERSION)
-  set(GETDP_EXTRA_VERSION "-cenos.py310")
+  set(GETDP_EXTRA_VERSION "-cenos.${GETDP_CENOS_REVISION}")
 endif()
 #set(GETDP_EXTRA_VERSION_TEXI "${GETDP_EXTRA_VERSION}")
 set(GETDP_EXTRA_VERSION_TEXI "")
 set(GETDP_EXTRA_VERSION_ORIG ${GETDP_EXTRA_VERSION})
 
+set(GETDP_METADATA "${GETDP_BUILD_METADATA}")
+
 if(NOT GETDP_RELEASE)
+  set(GETDP_DEV_BUILD ON)
   find_package(Git)
   if(GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} log -1 --format=%h
@@ -92,20 +97,27 @@ if(NOT GETDP_RELEASE)
   endif()
   if(GIT_COMMIT_HASH)
     message(STATUS "Found git hash ${GIT_COMMIT_HASH}")
-    set(GETDP_EXTRA_VERSION "${GETDP_EXTRA_VERSION}-git-${GIT_COMMIT_HASH}")
+    set(GETDP_DEV_TAG "dev.g${GIT_COMMIT_HASH}")
   else()
     message(STATUS "Could not find git hash")
-    set(GETDP_EXTRA_VERSION "${GETDP_EXTRA_VERSION}-git")
+    set(GETDP_DEV_TAG "dev")
+  endif()
+  if(GETDP_METADATA)
+    set(GETDP_METADATA "${GETDP_METADATA}.${GETDP_DEV_TAG}")
+  else()
+    set(GETDP_METADATA "${GETDP_DEV_TAG}")
   endif()
   set(GETDP_EXTRA_VERSION_TEXI "${GETDP_EXTRA_VERSION_TEXI} (development version)")
 endif()
 
+if(GETDP_METADATA)
+  set(GETDP_EXTRA_VERSION "${GETDP_EXTRA_VERSION}+${GETDP_METADATA}")
+endif()
+
 set(GETDP_VERSION "${GETDP_MAJOR_VERSION}.${GETDP_MINOR_VERSION}")
-# Re-enabled (was permanently commented out upstream) so that a custom
-# -DGETDP_EXTRA_VERSION=... passed at configure time actually shows up in
-# `getdp -version`/`-info`, e.g. "4.0.0+cenos.py310.1" - see cuda-build.md /
-# the versioning discussion for why. GETDP_RELEASE must also be set (see
-# above) or the dev-build git-hash logic will append "-git-<hash>" on top.
+# Re-enabled (was permanently commented out upstream) so that GETDP_EXTRA_VERSION
+# actually shows up in `getdp -version`/`-info` and in the .res / post-file
+# headers, e.g. "4.0.0-cenos.1+py310.cu13.g9622b0d".
 set(GETDP_VERSION "${GETDP_VERSION}.${GETDP_PATCH_VERSION}${GETDP_EXTRA_VERSION}")
 set(GETDP_SHORT_LICENSE "GNU General Public License")
 
@@ -1220,7 +1232,7 @@ set(CPACK_PACKAGE_VERSION_PATCH ${GETDP_PATCH_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${WELCOME_FILE})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "General Environment for the Treatment of Discrete Problems")
-if(GETDP_EXTRA_VERSION MATCHES "-git.*") # so that we'll overwrite the archives
+if(GETDP_DEV_BUILD) # so that we'll overwrite the archives
   set(CPACK_PACKAGE_FILE_NAME getdp${GETDP_EXTRA_VERSION_ORIG}-git-${GETDP_OS})
   set(CPACK_SOURCE_PACKAGE_FILE_NAME getdp${GETDP_EXTRA_VERSION_ORIG}-git-source)
 else()
@@ -1365,7 +1377,7 @@ message(STATUS " * Fortran compiler: " ${CMAKE_Fortran_COMPILER})
 message(STATUS " * Install prefix: " ${CMAKE_INSTALL_PREFIX})
 message(STATUS "")
 
-mark_as_advanced(GETDP_EXTRA_VERSION
+mark_as_advanced(GETDP_EXTRA_VERSION GETDP_CENOS_REVISION GETDP_BUILD_METADATA
                  ARPACK_LIB GMSH_INC GMSH_LIB GSLCBLAS_LIB GSL_INC GSL_LIB
                  PETSC_LIBS SLEPC_INC SLEPC_INC2 SLEPC_LIB
                  BISON FLEX MAKEINFO TEXI2PDF LCOV GENHTML
