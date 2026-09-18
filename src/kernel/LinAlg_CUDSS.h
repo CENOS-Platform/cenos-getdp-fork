@@ -18,9 +18,20 @@ extern "C" {
 //
 // Returns 0 on success, nonzero if anything failed (no GPU, driver error,
 // cuDSS error) - caller should fall back to the normal CPU solve path.
+//
+// Consecutive calls with the same sparsity pattern reuse the symbolic
+// factorization and the device buffers behind it, so a nonlinear loop pays for
+// the analysis once instead of once per iteration. A different pattern rebuilds
+// the context, releasing the previous one first, so only one system's worth of
+// device memory is ever held.
 int GetDP_CUDSS_SolveComplex(int n, int nnz, const int *rowPtr,
                              const int *colInd, const double *values,
                              const double *rhs, double *solution);
+
+// Release that retained context, device allocations included. Must be called
+// while CUDA is still up - GetDP does so from LinAlg_FinalizeSolver(). Safe
+// when nothing was ever solved, and safe to call more than once.
+void GetDP_CUDSS_Cleanup(void);
 
 #ifdef __cplusplus
 }

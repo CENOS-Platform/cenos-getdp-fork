@@ -134,6 +134,12 @@ void LinAlg_InitializeSolver(int *argc, char ***argv)
 void LinAlg_FinalizeSolver()
 {
   if(SolverInitialized) {
+#if defined(HAVE_CUDSS)
+    // Before PetscFinalize(), and before anything else starts tearing down:
+    // this frees device memory (a retained factorization is the big one), and
+    // that has to happen while the CUDA runtime is still usable.
+    GetDP_CUDSS_Cleanup();
+#endif
 #if defined(HAVE_SLEPC)
     SlepcFinalize();
 #endif
