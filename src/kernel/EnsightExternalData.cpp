@@ -20,13 +20,26 @@ EnsightExternalData::EnsightExternalData() {}
 
 EnsightExternalData::~EnsightExternalData() {}
 
+// Element nodes are stored in Gmsh order; EnSight slot k holds node perm[k].
+// Same maps as Gmsh's getVertexVTK/getVertexINP (MTetrahedron.h, MHexahedron.h,
+// MPrism.h, MPyramid.h); tria6 and quad8 share Gmsh's order. bar3 puts the
+// mid node second, as VTK's EnSight reader and writer (ParaView) expect.
 static int EnsightNodeSlot(int elementType, int iSlot)
 {
-  if(elementType == TETRAHEDRON_2) {
-    static const int perm[10] = {0, 1, 2, 3, 4, 5, 6, 7, 9, 8};
-    return perm[iSlot];
+  static const int bar3[3] = {0, 2, 1};
+  static const int tet10[10] = {0, 1, 2, 3, 4, 5, 6, 7, 9, 8};
+  static const int hex20[20] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  11,
+                                13, 9,  16, 18, 19, 17, 10, 12, 14, 15};
+  static const int pri15[15] = {0, 1, 2, 3, 4, 5, 6, 9, 7, 12, 14, 13, 8, 10, 11};
+  static const int pyr13[13] = {0, 1, 2, 3, 4, 5, 8, 10, 6, 7, 9, 11, 12};
+  switch(elementType) {
+  case LINE_2: return bar3[iSlot];
+  case TETRAHEDRON_2: return tet10[iSlot];
+  case HEXAHEDRON_2_20N: return hex20[iSlot];
+  case PRISM_2_15N: return pri15[iSlot];
+  case PYRAMID_2_13N: return pyr13[iSlot];
+  default: return iSlot;
   }
-  return iSlot;
 }
 
 // Use always with LastTimeStep option!!! Only one <group-id> in each

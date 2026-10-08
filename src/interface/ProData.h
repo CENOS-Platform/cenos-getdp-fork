@@ -1573,6 +1573,7 @@ struct PostSubOperation {
   int Type, SubType, CombinationType;
   int Depth, Skin, Smoothing, Dimension, HarmonicToTime, CatFile;
   int Binary; // used for PrintExternal
+  int ElementOrder; // used for PrintExternal
   char *Comma;
   int TimeToHarmonic;
   int FourierTransform;

@@ -10,15 +10,17 @@ public:
   static std::string g_deferName;
   static void FlushDeferred();
 private:
+  // EnSight has no complete quad9/hexa27/penta18/pyramid14 cells: Order 2
+  // exports the serendipity types (see Pos_PrintExternal.cpp)
   std::map<int, std::string> ToEnsightElementType = {
-    {POINT_ELEMENT, "point"},   {LINE, "bar2"},
-    {LINE_2, "bar3"},           {TRIANGLE, "tria3"},
-    {TRIANGLE_2, "tria6"},      {QUADRANGLE, "quad4"},
-    {QUADRANGLE_2, "quad8"},    {TETRAHEDRON, "tetra4"},
-    {TETRAHEDRON_2, "tetra10"}, {PYRAMID, "pyramid5"},
-    {PYRAMID_2, "pyramid13"},   {PRISM, "penta6"},
-    {PRISM_2, "penta15"},       {HEXAHEDRON, "hexa8"},
-    {HEXAHEDRON_2, "hexa20"} // not sure
+    {POINT_ELEMENT, "point"},       {LINE, "bar2"},
+    {LINE_2, "bar3"},               {TRIANGLE, "tria3"},
+    {TRIANGLE_2, "tria6"},          {QUADRANGLE, "quad4"},
+    {QUADRANGLE_2_8N, "quad8"},     {TETRAHEDRON, "tetra4"},
+    {TETRAHEDRON_2, "tetra10"},     {PYRAMID, "pyramid5"},
+    {PYRAMID_2_13N, "pyramid13"},   {PRISM, "penta6"},
+    {PRISM_2_15N, "penta15"},       {HEXAHEDRON, "hexa8"},
+    {HEXAHEDRON_2_20N, "hexa20"}
     //,{not supported by GetDP, "nsided"},
     //{not supported by GetDP, "nfaced"}
   };

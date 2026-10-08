@@ -7529,6 +7529,7 @@ PostSubOperations :
       PostSubOperation_S.TimeInterval[0] = 0.;
       PostSubOperation_S.TimeInterval[1] = 0.;
       PostSubOperation_S.Distributed = false;
+      PostSubOperation_S.ElementOrder = 1;
      }
     PostSubOperation
     {
@@ -8404,6 +8405,13 @@ PrintExternalOption :
   | ',' tSetFrequencyScale  CharExpr
     {
       PostSubOperation_S.SetFrequencyScale = $3;
+    }
+  | ',' tOrder FExpr
+    {
+      PostSubOperation_S.ElementOrder = (int)$3;
+      if(PostSubOperation_S.ElementOrder != 1 && PostSubOperation_S.ElementOrder != 2)
+        vyyerror(0, "PrintExternal: Order must be 1 or 2, not %d",
+                 PostSubOperation_S.ElementOrder);
     }
  ;
 
