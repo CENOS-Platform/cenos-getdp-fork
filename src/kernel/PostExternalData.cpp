@@ -54,11 +54,13 @@ void PostExternalData::addElement(PostElement *PE, int region_nr)
   Get_NodesCoordinatesOfElement(&e);
 
   PostExternalElement post_el;
-  post_el.type = e.Type;
+  // the PostElement, not the GeoElement: a second-order mesh element is
+  // exported as a linear cell unless PrintExternal requests Order 2
+  post_el.type = PE->Type;
   post_el.index = PE->Index;
   post_el.region = region_nr; // e.GeoElement->ElementaryRegion;
 
-  for(int iNode = 0; iNode < e.GeoElement->NbrNodes; iNode++) {
+  for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
     if(node_map.count(PE->NumNodes[iNode]) == 0) {
       node_map[PE->NumNodes[iNode]] = node_map.size();
       node_coordinates.push_back(
