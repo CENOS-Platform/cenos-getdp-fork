@@ -4,6 +4,7 @@
 #include <string.h>
 #include "Pos_Formulation.h"
 #include "Message.h"
+#include "OS.h"
 #include "Get_DofOfElement.h"
 #include "DofData.h"
 #include "GeoData.h"
@@ -487,44 +488,33 @@ void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P)
   Ensight_Case.From_Previous = true;
 
   // now read file and find next step
-  std::ifstream textFileStream;
+  // C stdio, not std::ifstream: with -mcrtdll=ucrt the inlined fstream layout
+  // (8-byte mbstate_t) does not match the msvcrt-built libstdc++.a
   int next_step = 0;
   double time;
   std::vector<double> time_values;
-  textFileStream.open(filename.c_str());
-  // Check, if the text file could be opened and continue only, of OK
-  // Message::Info("Is open %d", textFileStream.is_open());
-  if(textFileStream.is_open()) {
-    std::string word;
-    // look for line number of steps:
-    std::string steps_key = "steps:";
-
-	// look for line number of values:
-    std::string values_key = "values:";
-
-    // read each word separated by spaces
-    while(textFileStream >> word) {
-		std::cout << word << std::endl;;
-      if(word == steps_key) {
-        textFileStream >> next_step;
+  FILE *fp = FOpen(filename.c_str(), "r");
+  if(fp) {
+    char word[1024];
+    while(fscanf(fp, "%1023s", word) == 1) {
+      if(!strcmp(word, "steps:")) {
+        if(fscanf(fp, "%d", &next_step) != 1) next_step = 0;
       }
-
-      if(word == values_key) {
-		  // in ensight format nr of steps is
-		  // before time data
-		  for (int i = 0; i< next_step; i++)
-		  {
-			  textFileStream >> time;
-			  time_values.push_back(time);
-		  }
+      if(!strcmp(word, "values:")) {
+        // in ensight format nr of steps is before time data
+        for(int i = 0; i < next_step; i++) {
+          if(fscanf(fp, "%lf", &time) != 1) break;
+          time_values.push_back(time);
+        }
       }
     }
+    fclose(fp);
   }
 
   Ensight_Case.time_values = time_values;
   Ensight_Case.start_index = next_step;
 
-  textFileStream.close();
-  std::cout << "Ensight_Case.start_index " << next_step << std::endl;
+  Message::Info("PrintExternal_FromPrevious: %d time step(s) in '%s'", next_step,
+                filename.c_str());
   
 }
