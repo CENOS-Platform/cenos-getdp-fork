@@ -391,6 +391,7 @@ struct BasisFunction {
   double Order;
   int ElementType;
   int Orient;
+  int FacetFilter; // 0, or the node count (3 or 4) of the only facets used
 };
 
 struct GlobalBasisFunction {

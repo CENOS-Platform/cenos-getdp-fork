@@ -3,6 +3,7 @@
 // See the LICENSE.txt file for license information. Please report all
 // issues on https://gitlab.onelab.info/getdp/getdp/issues.
 
+#include "Gauss.h"
 #include "Gauss_Prism.h"
 #include "Message.h"
 
@@ -40,9 +41,20 @@ void Gauss_Prism(int Nbr_Points, int Num, double *u, double *v, double *w,
     *wght = ppri42[Num];
     break;
 
-  default:
+  default: {
+    // tensor products of a triangle rule and a Gauss line rule
+    static const int rules[][3] = {{18, 6, 3}, {36, 12, 3}, {48, 16, 3},
+                                   {64, 16, 4}};
+    for(auto &rule : rules) {
+      if(rule[0] != Nbr_Points) continue;
+      double wt, wl, dummy;
+      Gauss_Triangle(rule[1], Num / rule[2], u, v, &dummy, &wt);
+      Gauss_Line(rule[2], Num % rule[2], w, &dummy, &dummy, &wl);
+      *wght = wt * wl;
+      return;
+    }
     Message::Error("Wrong number of Gauss points for Prism: "
-                   "valid choices: 6, 9, 21, 42");
-    break;
+                   "valid choices: 6, 9, 18, 21, 36, 42, 48, 64");
+  } break;
   }
 }

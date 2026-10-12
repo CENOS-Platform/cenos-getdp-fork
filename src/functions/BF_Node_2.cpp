@@ -238,17 +238,12 @@ void BF_Node_2F(struct Element *Element, int NumEntity, double u, double v,
   case PRISM_2_15N:
   case PRISM_3:
   case PRISM_4:
+    // quadrangular facets only (BF_Node_2F is restricted to them)
     switch(NumEntity) {
-    default:
-      Message::Error("BF_Node_2F not ready for PRISM");
-      // cannot do this, as dofs should only be associated with quad-faces; use
-      // 15 and 18-node prisms instead, i.e. through BF_Node (which calls Gmsh).
-      /*
-    case 1  : *s = 0.25 * (1.-u-v) * (1.-w) *     u    * (1.+w) ; break ;
-    case 3  : *s = 0.25 * (1.-u-v) * (1.-w) *       v  * (1.+w) ; break ;
-    case 4  : *s = 0.25 *     u    * (1.-w) *       v  * (1.+w) ; break ;
-    default : WrongNumEntity ;
-      */
+    case 1: *s = 0.25 * (1. - u - v) * (1. - w) * u * (1. + w); break;
+    case 3: *s = 0.25 * (1. - u - v) * (1. - w) * v * (1. + w); break;
+    case 4: *s = 0.25 * u * (1. - w) * v * (1. + w); break;
+    default: WrongNumEntity;
     }
     break;
 
@@ -717,25 +712,24 @@ void BF_GradNode_2F(struct Element *Element, int NumEntity, double u, double v,
   case PRISM_2_15N:
   case PRISM_3:
   case PRISM_4:
+    // quadrangular facets only (BF_GradNode_2F is restricted to them)
     switch(NumEntity) {
-    default:
-      Message::Error("BF_GradNode_2F not ready for PRISM");
-      // cannot do this yet in getdp, as dofs should only be
-      // associated with quad-faces: if really necessary we could
-      // implement actual 15 and 18-node prisms
-      /*
-    case 1   : s[0] = 0.25 * (1.-2.*u-v) * (1.-w) * (1.+w) ;
-               s[1] = 0.25 * (-u) * (1.-w) * (1.+w);
-               s[2] = 0.25 * (u-u*u-u*v) * (-2.*w); break ;
-
-    case 3   : s[0] = 0.25 * (-v) * (1.-w) * (1.+w) ;
-               s[1] = 0.25 * (1.-u-2.*v) * (1.-w) * (1.+w) ;
-               s[2] = 0.25 * (v-u*v-v*v) * (-2.*w) ; break;
-
-    case 4   : s[0] = 0.25 * (1.-w) * v * (1.+w) ;
-               s[1] = 0.25 * u * (1.-w) * (1.+w) ;
-               s[2] = 0.25 * u * (-2.*w) * v ; break;
-      */
+    case 1:
+      s[0] = 0.25 * (1. - 2. * u - v) * (1. - w) * (1. + w);
+      s[1] = 0.25 * (-u) * (1. - w) * (1. + w);
+      s[2] = 0.25 * (u - u * u - u * v) * (-2. * w);
+      break;
+    case 3:
+      s[0] = 0.25 * (-v) * (1. - w) * (1. + w);
+      s[1] = 0.25 * (1. - u - 2. * v) * (1. - w) * (1. + w);
+      s[2] = 0.25 * (v - u * v - v * v) * (-2. * w);
+      break;
+    case 4:
+      s[0] = 0.25 * (1. - w) * v * (1. + w);
+      s[1] = 0.25 * u * (1. - w) * (1. + w);
+      s[2] = 0.25 * u * (-2. * w) * v;
+      break;
+    default: WrongNumEntity;
     }
     break;
 

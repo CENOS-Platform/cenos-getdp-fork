@@ -533,8 +533,8 @@ CASES = {
     "tet": dict(_BASE, mesh=mesh_tet, hcurl=True),
     "mixed2d": dict(_BASE, mesh=mesh_mixed2d, integ="GaussLegendre", h=["2E", "2F"]),
     "hex": dict(_BASE, mesh=mesh_hex, integ="GaussLegendre", h=["2E", "2F", "2V"]),
-    # GetDP's prism BF_Node_2E does not span P2 and BF_Node_2F has no prism
-    # version: project the linear field (still exported through penta15)
+    # the linear field: baselines older than the prism BF_Node_2F (checked in
+    # tests/prism_order2) do not span P2 on prisms (still exported through penta15)
     "prism": dict(_BASE, mesh=mesh_prism, fu="flin"),
     # BF_Node_2E has no pyramid implementation
     "pyramid": dict(_BASE, mesh=mesh_pyramid, bnd=False, h=[], fu="flin"),
