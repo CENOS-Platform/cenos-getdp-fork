@@ -39,10 +39,16 @@ void Gauss_Quadrangle(int Nbr_Points, int Num, double *u, double *v, double *w,
     *w = 0.;
     *wght = pq7[Num];
     break;
-  default:
-    Message::Error("Wrong number of Gauss points for Quadrangle: "
-                   "valid choices: 1, 3, 4, 7");
-    break;
+  default: {
+    // the tabulated rules stop at degree 5, below what second-order basis
+    // functions need on quadrangles
+    int nb = (int)(sqrt((double)Nbr_Points) + 0.5);
+    if(nb >= 3 && nb * nb == Nbr_Points)
+      GaussLegendre_Quadrangle(Nbr_Points, Num, u, v, w, wght);
+    else
+      Message::Error("Wrong number of Gauss points for Quadrangle: "
+                     "valid choices: 1, 3, 4, 7, or n^2 with n >= 3");
+  } break;
   }
 }
 

@@ -391,6 +391,7 @@ struct BasisFunction {
   double Order;
   int ElementType;
   int Orient;
+  int FacetFilter; // 0, or the node count (3 or 4) of the only facets used
 };
 
 struct GlobalBasisFunction {
@@ -1573,6 +1574,7 @@ struct PostSubOperation {
   int Type, SubType, CombinationType;
   int Depth, Skin, Smoothing, Dimension, HarmonicToTime, CatFile;
   int Binary; // used for PrintExternal
+  int ElementOrder; // used for PrintExternal
   char *Comma;
   int TimeToHarmonic;
   int FourierTransform;

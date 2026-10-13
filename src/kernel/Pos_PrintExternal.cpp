@@ -4,6 +4,7 @@
 #include <string.h>
 #include "Pos_Formulation.h"
 #include "Message.h"
+#include "OS.h"
 #include "Get_DofOfElement.h"
 #include "DofData.h"
 #include "GeoData.h"
@@ -14,7 +15,10 @@
 #include <type_traits>
 #include "VTUExternalData.h"
 #include "EnsightExternalData.h"
-#include <fstream>  
+#include "ProDefine.h"
+#include <fstream>
+#include <algorithm>
+#include <unordered_map>
 
 extern struct Problem Problem_S;
 extern struct CurrentData Current;
@@ -46,6 +50,145 @@ static int fcmp_xyzv(const void *a, const void *b)
   if(p1->z - p2->z < -TOL) return -1;
   return 0;
 }
+
+/* ------------------------------------------------------------------------ */
+/*  Second-order PostElements (PrintExternal Order 2)                        */
+/* ------------------------------------------------------------------------ */
+
+// Gmsh second-order node order: vertices, then one node per edge in this
+// order. GetDP's Den_* edge tables differ from it for triangles, quadrangles
+// and tetrahedra, so they cannot be used here.
+static const int Edges2_Line[][2] = {{0, 1}};
+static const int Edges2_Triangle[][2] = {{0, 1}, {1, 2}, {2, 0}};
+static const int Edges2_Quadrangle[][2] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}};
+static const int Edges2_Tetrahedron[][2] = {{0, 1}, {1, 2}, {2, 0},
+                                            {3, 0}, {3, 2}, {3, 1}};
+static const int Edges2_Hexahedron[][2] = {{0, 1}, {0, 3}, {0, 4}, {1, 2},
+                                           {1, 5}, {2, 3}, {2, 6}, {3, 7},
+                                           {4, 5}, {4, 7}, {5, 6}, {6, 7}};
+static const int Edges2_Prism[][2] = {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 4},
+                                      {2, 5}, {3, 4}, {3, 5}, {4, 5}};
+static const int Edges2_Pyramid[][2] = {{0, 1}, {0, 3}, {0, 4}, {1, 2},
+                                        {1, 4}, {2, 3}, {2, 4}, {3, 4}};
+
+// Complete second-order types (quad9, hex27, prism18) are reduced to their
+// serendipity subset, the only quadratic cells EnSight Gold has.
+static int Get_Order2Type(int Type, int *BaseType, const int (**Edges)[2],
+                          int *NbrEdges)
+{
+  switch(Type) {
+  case POINT_ELEMENT:
+    *BaseType = POINT_ELEMENT;
+    *NbrEdges = 0;
+    return POINT_ELEMENT;
+  case LINE:
+  case LINE_2:
+    *BaseType = LINE;
+    *Edges = Edges2_Line;
+    *NbrEdges = 1;
+    return LINE_2;
+  case TRIANGLE:
+  case TRIANGLE_2:
+    *BaseType = TRIANGLE;
+    *Edges = Edges2_Triangle;
+    *NbrEdges = 3;
+    return TRIANGLE_2;
+  case QUADRANGLE:
+  case QUADRANGLE_2:
+  case QUADRANGLE_2_8N:
+    *BaseType = QUADRANGLE;
+    *Edges = Edges2_Quadrangle;
+    *NbrEdges = 4;
+    return QUADRANGLE_2_8N;
+  case TETRAHEDRON:
+  case TETRAHEDRON_2:
+    *BaseType = TETRAHEDRON;
+    *Edges = Edges2_Tetrahedron;
+    *NbrEdges = 6;
+    return TETRAHEDRON_2;
+  case HEXAHEDRON:
+  case HEXAHEDRON_2:
+  case HEXAHEDRON_2_20N:
+    *BaseType = HEXAHEDRON;
+    *Edges = Edges2_Hexahedron;
+    *NbrEdges = 12;
+    return HEXAHEDRON_2_20N;
+  case PRISM:
+  case PRISM_2:
+  case PRISM_2_15N:
+    *BaseType = PRISM;
+    *Edges = Edges2_Prism;
+    *NbrEdges = 9;
+    return PRISM_2_15N;
+  // not PYRAMID_2: GetDP counts 13 nodes for it while Gmsh writes 14
+  case PYRAMID:
+  case PYRAMID_2_13N:
+    *BaseType = PYRAMID;
+    *Edges = Edges2_Pyramid;
+    *NbrEdges = 8;
+    return PYRAMID_2_13N;
+  default: return -1;
+  }
+}
+
+static struct PostElement *
+Create_Order2PostElement(struct Geo_Element *GE, int Index,
+                         std::unordered_map<long long, int> &EdgeNodeNum)
+{
+  int BaseType, NbrEdges = 0, NbrVertices;
+  const int(*Edges)[2] = NULL;
+  int Type = Get_Order2Type(GE->Type, &BaseType, &Edges, &NbrEdges);
+  if(Type < 0) {
+    Message::Error("PrintExternal Order 2 does not support elements of type %s",
+                   Get_StringForDefine(Element_Type, GE->Type));
+    return NULL;
+  }
+  double *uvw = Geo_GetNodes_uvw(BaseType, &NbrVertices);
+
+  struct Element E;
+  Get_InitDofOfElement(&E);
+  E.GeoElement = GE;
+  E.Num = GE->Num;
+  E.Type = GE->Type;
+  E.Region = GE->Region;
+  Get_NodesCoordinatesOfElement(&E);
+
+  struct PostElement *PE =
+    Create_PostElement(Index, Type, NbrVertices + NbrEdges, 1);
+  for(int i = 0; i < NbrVertices; i++) {
+    PE->NumNodes[i] = GE->NumNodes[i];
+    PE->u[i] = uvw[3 * i];
+    PE->v[i] = uvw[3 * i + 1];
+    PE->w[i] = uvw[3 * i + 2];
+    PE->x[i] = E.x[i];
+    PE->y[i] = E.y[i];
+    PE->z[i] = E.z[i];
+  }
+  for(int k = 0; k < NbrEdges; k++) {
+    int a = Edges[k][0], b = Edges[k][1], i = NbrVertices + k;
+    long long lo = std::min(GE->NumNodes[a], GE->NumNodes[b]);
+    long long hi = std::max(GE->NumNodes[a], GE->NumNodes[b]);
+    // mesh nodes are > 0 and Cut_PostElement uses -1, so mid-edge nodes are
+    // numbered -2, -3, ... to stay distinct in node_map
+    PE->NumNodes[i] =
+      EdgeNodeNum.emplace((lo << 32) | hi, -2 - (int)EdgeNodeNum.size())
+        .first->second;
+    PE->u[i] = 0.5 * (uvw[3 * a] + uvw[3 * b]);
+    PE->v[i] = 0.5 * (uvw[3 * a + 1] + uvw[3 * b + 1]);
+    PE->w[i] = 0.5 * (uvw[3 * a + 2] + uvw[3 * b + 2]);
+    // through the geometric mapping, so a curved second-order mesh gets its
+    // own mid-edge node
+    Get_BFGeoElement(&E, PE->u[i], PE->v[i], PE->w[i]);
+    PE->x[i] = PE->y[i] = PE->z[i] = 0.;
+    for(int j = 0; j < GE->NbrNodes; j++) {
+      PE->x[i] += E.x[j] * E.n[j];
+      PE->y[i] += E.y[j] * E.n[j];
+      PE->z[i] += E.z[j] * E.n[j];
+    }
+  }
+  return PE;
+}
+
 void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
                        struct DefineQuantity *DefineQuantity_P0,
                        struct QuantityStorage *QuantityStorage_P0,
@@ -54,6 +197,17 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
   PostExternalData *post_data;
   int Store = 0;
   if(PSO_P->Smoothing) { Store = 1; }
+
+  if(PSO_P->ElementOrder == 2) {
+    if(PSO_P->Format != FORMAT_ENSIGHT) {
+      Message::Error("PrintExternal Order 2 is only available with Format ENSIGHT");
+      return;
+    }
+    if(PSO_P->Depth != 1 || PSO_P->Skin || PSO_P->Gauss) {
+      Message::Error("PrintExternal Order 2 cannot be combined with Depth, Skin or Gauss");
+      return;
+    }
+  }
 
   if(PSO_P->Format == FORMAT_VTU)
     post_data = new VTUExternalData();
@@ -86,14 +240,31 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
   List_T *PostElement_L =
     List_Create(NbrGeoAll / 10 + 10, NbrGeoAll / 10 + 10,
                 sizeof(struct PostElement *));
+  std::unordered_map<long long, int> EdgeNodeNum;
   for(int iGeo = 0; iGeo < NbrGeoAll; iGeo++) {
     Element.GeoElement = Geo_GetGeoElement(iGeo);
     if((Group_P->Type != ELEMENTLIST &&
         List_Search(Region_L, &Element.GeoElement->Region, fcmp_int)) ||
        (Group_P->Type == ELEMENTLIST &&
         Check_IsEntityInExtendedGroup(Group_P, Element.GeoElement->Num, 0))) {
-      Fill_PostElement(Element.GeoElement, PostElement_L, iGeo, PSO_P->Depth,
-                       PSO_P->Skin, 0, 0, PSO_P->Gauss);
+      if(PSO_P->ElementOrder == 2) {
+        struct PostElement *PE =
+          Create_Order2PostElement(Element.GeoElement, iGeo, EdgeNodeNum);
+        if(!PE) {
+          for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+            Destroy_PostElement(
+              *(struct PostElement **)List_Pointer(PostElement_L, iPost));
+          }
+          List_Delete(PostElement_L);
+          delete post_data;
+          return;
+        }
+        List_Add(PostElement_L, &PE);
+      }
+      else {
+        Fill_PostElement(Element.GeoElement, PostElement_L, iGeo,
+                         PSO_P->Depth, PSO_P->Skin, 0, 0, PSO_P->Gauss);
+      }
     }
   }
   for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
@@ -317,44 +488,33 @@ void Pos_PrintExternalFromPrevious(struct PostSubOperation *PSO_P)
   Ensight_Case.From_Previous = true;
 
   // now read file and find next step
-  std::ifstream textFileStream;
+  // C stdio, not std::ifstream: with -mcrtdll=ucrt the inlined fstream layout
+  // (8-byte mbstate_t) does not match the msvcrt-built libstdc++.a
   int next_step = 0;
   double time;
   std::vector<double> time_values;
-  textFileStream.open(filename.c_str());
-  // Check, if the text file could be opened and continue only, of OK
-  // Message::Info("Is open %d", textFileStream.is_open());
-  if(textFileStream.is_open()) {
-    std::string word;
-    // look for line number of steps:
-    std::string steps_key = "steps:";
-
-	// look for line number of values:
-    std::string values_key = "values:";
-
-    // read each word separated by spaces
-    while(textFileStream >> word) {
-		std::cout << word << std::endl;;
-      if(word == steps_key) {
-        textFileStream >> next_step;
+  FILE *fp = FOpen(filename.c_str(), "r");
+  if(fp) {
+    char word[1024];
+    while(fscanf(fp, "%1023s", word) == 1) {
+      if(!strcmp(word, "steps:")) {
+        if(fscanf(fp, "%d", &next_step) != 1) next_step = 0;
       }
-
-      if(word == values_key) {
-		  // in ensight format nr of steps is
-		  // before time data
-		  for (int i = 0; i< next_step; i++)
-		  {
-			  textFileStream >> time;
-			  time_values.push_back(time);
-		  }
+      if(!strcmp(word, "values:")) {
+        // in ensight format nr of steps is before time data
+        for(int i = 0; i < next_step; i++) {
+          if(fscanf(fp, "%lf", &time) != 1) break;
+          time_values.push_back(time);
+        }
       }
     }
+    fclose(fp);
   }
 
   Ensight_Case.time_values = time_values;
   Ensight_Case.start_index = next_step;
 
-  textFileStream.close();
-  std::cout << "Ensight_Case.start_index " << next_step << std::endl;
+  Message::Info("PrintExternal_FromPrevious: %d time step(s) in '%s'", next_step,
+                filename.c_str());
   
 }

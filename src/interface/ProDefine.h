@@ -31,6 +31,7 @@ struct StringX3Function3Nbr {
   double Nbr1;
   int Nbr2;
   int Nbr3;
+  int Nbr4;
 };
 
 struct DefineXFunction {
@@ -104,7 +105,7 @@ void Get_3Function3NbrForString(struct StringX3Function3Nbr SXF[],
                                 const char *string, int *FlagError,
                                 void (**Function1)(), void (**Function2)(),
                                 void (**Function3)(), double *Nbr1, int *Nbr2,
-                                int *Nbr3);
+                                int *Nbr3, int *Nbr4 = nullptr);
 
 void Get_FunctionForDefine(struct DefineXFunction DXF[], int define,
                            int *FlagError, void (**Function)());

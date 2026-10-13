@@ -89,6 +89,15 @@ int *Geo_GetNodesOfFacetInElement(struct Geo_Element *Geo_Element,
           Num_Facet * NBR_MAX_SUBENTITIES_IN_ELEMENT);
 }
 
+int Geo_GetNbrNodesOfFacetInElement(struct Geo_Element *Geo_Element,
+                                    int Num_Facet)
+{
+  int *NumNodes = Geo_GetNodesOfFacetInElement(Geo_Element, Num_Facet);
+  int n = 0;
+  while(n < NBR_MAX_SUBENTITIES_IN_ELEMENT && NumNodes[n]) n++;
+  return n;
+}
+
 /* ------------------------------------------------------------------------ */
 /*  G e o _ C r e a t e F a c e t s O f E l e m e n t                       */
 /* ------------------------------------------------------------------------ */

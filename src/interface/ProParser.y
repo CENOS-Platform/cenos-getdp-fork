@@ -2672,6 +2672,7 @@ BasisFunction :
       BasisFunction_S.SubdFunction = NULL;
       BasisFunction_S.SupportIndex = -1;
       BasisFunction_S.EntityIndex  = -1;
+      BasisFunction_S.FacetFilter = 0;
       level_Append_2 = (level_Append)? level_Append-1 : 0;
       index_Append_2 = -1;
     }
@@ -2714,7 +2715,8 @@ BasisFunctionTerm :
 	(BF_Function, $2, &FlagError,
 	 &BasisFunction_S.Function, &BasisFunction_S.dFunction,
 	 &BasisFunction_S.dInvFunction, &BasisFunction_S.Order,
-	 &BasisFunction_S.ElementType, &BasisFunction_S.Orient);
+	 &BasisFunction_S.ElementType, &BasisFunction_S.Orient,
+	 &BasisFunction_S.FacetFilter);
       if(FlagError){
 	Get_Valid_SX3F3N($2, BF_Function);
 	vyyerror(0, "Unknown Function for BasisFunction: %s", $2);
@@ -7529,6 +7531,7 @@ PostSubOperations :
       PostSubOperation_S.TimeInterval[0] = 0.;
       PostSubOperation_S.TimeInterval[1] = 0.;
       PostSubOperation_S.Distributed = false;
+      PostSubOperation_S.ElementOrder = 1;
      }
     PostSubOperation
     {
@@ -8404,6 +8407,13 @@ PrintExternalOption :
   | ',' tSetFrequencyScale  CharExpr
     {
       PostSubOperation_S.SetFrequencyScale = $3;
+    }
+  | ',' tOrder FExpr
+    {
+      PostSubOperation_S.ElementOrder = (int)$3;
+      if(PostSubOperation_S.ElementOrder != 1 && PostSubOperation_S.ElementOrder != 2)
+        vyyerror(0, "PrintExternal: Order must be 1 or 2, not %d",
+                 PostSubOperation_S.ElementOrder);
     }
  ;
 

@@ -230,7 +230,8 @@ static unsigned int utf8FromUtf16(char *dst, unsigned int dstlen,
   return count;
 }
 
-static wchar_t *wbuf[2] = {NULL, NULL};
+// thread_local: the EnSight writer thread opens files while the main thread does
+static thread_local wchar_t *wbuf[2] = {NULL, NULL};
 
 static void setwbuf(int i, const char *f)
 {

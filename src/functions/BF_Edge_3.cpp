@@ -63,6 +63,198 @@ int Get_FacetFunctionIndex(struct Element *Element, int NumEntity, int NumIndex)
 #endif
 }
 
+/* Prisms: lambda_1..3 are the barycentric coordinates of the triangle (u,v) and
+   phi_0 = (1-w)/2, phi_1 = (1+w)/2 the linear functions along w. Local nodes
+   1-3 lie at w = -1 and nodes 4-6 above them at w = 1. */
+
+static void Prism_Lambda(double u, double v, double l[3], double dl[3][3])
+{
+  l[0] = 1. - u - v;
+  l[1] = u;
+  l[2] = v;
+  dl[0][0] = -1.;
+  dl[0][1] = -1.;
+  dl[0][2] = 0.;
+  dl[1][0] = 1.;
+  dl[1][1] = 0.;
+  dl[1][2] = 0.;
+  dl[2][0] = 0.;
+  dl[2][1] = 1.;
+  dl[2][2] = 0.;
+}
+
+static void Cross(const double a[3], const double b[3], double c[3])
+{
+  c[0] = a[1] * b[2] - a[2] * b[1];
+  c[1] = a[2] * b[0] - a[0] * b[2];
+  c[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+/* Facet functions are written f grad(g), so that their curl is
+   grad(f) x grad(g). */
+
+/* Triangular facets of a prism carry phi * lambda_p lambda_q grad(lambda_k),
+   whose trace is the tetrahedron facet function selected by the same global
+   node ranking */
+
+static void Prism_TriangleFacet(struct Element *Element, int NumEntity,
+                                int Index, double u, double v, double w,
+                                double *f, double df[3], double dg[3])
+{
+  *f = 0.;
+  for(int i = 0; i < 3; i++) df[i] = dg[i] = 0.;
+  if(NumEntity != 2 && NumEntity != 5) {
+    Message::Error("Facet function on non-triangular facet %d of a PRISM",
+                   NumEntity);
+    return;
+  }
+  double l[3], dl[3][3];
+  Prism_Lambda(u, v, l, dl);
+  int k = (Get_FacetFunctionIndex(Element, NumEntity, Index) - 1) % 3;
+  int p = (k + 1) % 3, q = (k + 2) % 3;
+  double phi = (NumEntity == 2) ? 0.5 * (1. - w) : 0.5 * (1. + w);
+  double dphi = (NumEntity == 2) ? -0.5 : 0.5;
+  *f = phi * l[p] * l[q];
+  for(int i = 0; i < 3; i++) {
+    df[i] = phi * (l[q] * dl[p][i] + l[p] * dl[q][i]);
+    dg[i] = dl[k][i];
+  }
+  df[2] += l[p] * l[q] * dphi;
+}
+
+static bool Is_Quadrangle(int Type)
+{
+  return Type & (QUADRANGLE | QUADRANGLE_2 | QUADRANGLE_2_8N | QUADRANGLE_3 |
+                 QUADRANGLE_4);
+}
+
+static bool Is_Prism(int Type)
+{ return Type & (PRISM | PRISM_2 | PRISM_2_15N | PRISM_3 | PRISM_4); }
+
+// Facet nodes as in Dfn_Quadrangle and Dfn_Prism (GeoEntity.h)
+static const int *Get_QuadFacetNodes(int Type, int NumEntity)
+{
+  static const int quadrangle[4] = {1, 2, 3, 4};
+  static const int prism[5][4] = {
+    {1, 2, 5, 4}, {0, 0, 0, 0}, {1, 4, 6, 3}, {2, 3, 6, 5}, {0, 0, 0, 0}};
+  return Is_Quadrangle(Type) ? quadrangle : prism[NumEntity - 1];
+}
+
+/* Quadrangular facets: X[i] vanishes on the facet edge from facet node i to
+   node i+1 and equals 1 on the opposite edge, so that its restriction to the
+   facet is the same bilinear function seen from every element sharing it. */
+
+static bool Get_QuadFacetFactors(struct Element *Element, int NumEntity,
+                                 double u, double v, double w, double X[4],
+                                 double dX[4][3])
+{
+  for(int i = 0; i < 4; i++) X[i] = dX[i][0] = dX[i][1] = dX[i][2] = 0.;
+
+  if(Is_Quadrangle(Element->Type)) {
+    X[0] = 0.5 * (1. + v);
+    dX[0][1] = 0.5;
+    X[1] = 0.5 * (1. - u);
+    dX[1][0] = -0.5;
+    X[2] = 0.5 * (1. - v);
+    dX[2][1] = -0.5;
+    X[3] = 0.5 * (1. + u);
+    dX[3][0] = 0.5;
+    return true;
+  }
+
+  if(!Is_Prism(Element->Type)) {
+    Message::Error("Quadrangular facet functions are not defined for %s",
+                   Element->Type &
+                       (PYRAMID | PYRAMID_2 | PYRAMID_2_13N | PYRAMID_3) ?
+                     "pyramids" :
+                     "this element type");
+    return false;
+  }
+  if(NumEntity == 2 || NumEntity == 5) {
+    Message::Error("Quadrangular facet function on triangular facet %d of a "
+                   "PRISM",
+                   NumEntity);
+    return false;
+  }
+
+  double l[3], dl[3][3];
+  Prism_Lambda(u, v, l, dl);
+  const int *n = Get_QuadFacetNodes(Element->Type, NumEntity);
+  int triangleVertices = 0;
+  for(int i = 0; i < 4; i++) triangleVertices |= 1 << ((n[i] - 1) % 3);
+  for(int i = 0; i < 4; i++) {
+    int a = n[i] - 1, b = n[(i + 1) % 4] - 1;
+    if(a / 3 == b / 3) { // horizontal edge, at the bottom if a / 3 == 0
+      X[i] = (a / 3 == 0) ? 0.5 * (1. + w) : 0.5 * (1. - w);
+      dX[i][2] = (a / 3 == 0) ? 0.5 : -0.5;
+    }
+    else { // vertical edge through triangle vertex a % 3
+      int other = 0;
+      while(!(triangleVertices & (1 << other)) || other == a % 3) other++;
+      X[i] = l[other];
+      for(int j = 0; j < 3; j++) dX[i][j] = dl[other][j];
+    }
+  }
+  return true;
+}
+
+/* Of the four functions (product of the other factors) * grad(X[i]), whose sum
+   is the gradient of the facet bubble, the one on the edge between the node
+   with the lowest global number and its lower-ranked neighbour is dropped.
+   The ranking makes the choice identical in every element sharing the
+   facet. */
+
+static int Get_QuadFacetFunctionEdge(struct Element *Element, int NumEntity,
+                                     int Index)
+{
+  const int *n = Get_QuadFacetNodes(Element->Type, NumEntity);
+  int rank[4] = {0, 0, 0, 0};
+  for(int r = 1; r <= 4; r++) {
+    int node = Get_FacetFunctionIndex(Element, NumEntity, r);
+    for(int i = 0; i < 4; i++)
+      if(n[i] == node) rank[i] = r;
+  }
+  int o = 0;
+  while(o < 3 && rank[o] != 1) o++;
+  int e1 = (o + 1) % 4, e2 = (o + 3) % 4, d = (o + 2) % 4;
+  if(rank[e2] < rank[e1]) {
+    int t = e1;
+    e1 = e2;
+    e2 = t;
+  }
+  int i = e2, j = d;
+  if(Index == 1) {
+    i = o;
+    j = e2;
+  }
+  else if(Index == 2) {
+    i = e1;
+    j = d;
+  }
+  return (j == (i + 1) % 4) ? i : j;
+}
+
+static void Quad_FacetFunction(struct Element *Element, int NumEntity,
+                               int Index, double u, double v, double w,
+                               double *f, double df[3], double dg[3])
+{
+  double X[4], dX[4][3];
+  *f = 0.;
+  for(int c = 0; c < 3; c++) df[c] = dg[c] = 0.;
+  if(!Get_QuadFacetFactors(Element, NumEntity, u, v, w, X, dX)) return;
+  int e = Get_QuadFacetFunctionEdge(Element, NumEntity, Index);
+  *f = 1.;
+  for(int j = 0; j < 4; j++) {
+    if(j == e) continue;
+    double others = 1.;
+    for(int k = 0; k < 4; k++)
+      if(k != e && k != j) others *= X[k];
+    *f *= X[j];
+    for(int c = 0; c < 3; c++) df[c] += others * dX[j][c];
+  }
+  for(int c = 0; c < 3; c++) dg[c] = dX[e][c];
+}
+
 /* ------------------------------------------------------------------------ */
 /*  B F _ E d g e _ 3                                                       */
 /* ------------------------------------------------------------------------ */
@@ -255,11 +447,11 @@ void BF_Edge_3F(struct Element *Element, int NumEntity, int Index, double u,
   case PRISM_2:
   case PRISM_2_15N:
   case PRISM_3:
-  case PRISM_4:
-    switch(NumEntity) {
-    default: Message::Error("BF_Edge_3F not ready for PRISM");
-    }
-    break;
+  case PRISM_4: {
+    double f, df[3], dg[3];
+    Prism_TriangleFacet(Element, NumEntity, Index, u, v, w, &f, df, dg);
+    for(int i = 0; i < 3; i++) s[i] = f * dg[i];
+  } break;
 
   case PYRAMID:
   case PYRAMID_2:
@@ -496,11 +688,11 @@ void BF_CurlEdge_3F(struct Element *Element, int NumEntity, int Index, double u,
   case PRISM_2:
   case PRISM_2_15N:
   case PRISM_3:
-  case PRISM_4:
-    switch(NumEntity) {
-    default: Message::Error("BF_CurlEdge_3F not ready for PRISM");
-    }
-    break;
+  case PRISM_4: {
+    double f, df[3], dg[3];
+    Prism_TriangleFacet(Element, NumEntity, Index, u, v, w, &f, df, dg);
+    Cross(df, dg, s);
+  } break;
 
   case PYRAMID:
   case PYRAMID_2:
@@ -543,4 +735,78 @@ void BF_CurlEdge_3V(struct Element *Element, int NumEntity, double u, double v,
                     double w, double s[])
 {
   Message::Error("You should never end up here!");
+}
+
+/* ------------------------------------------------------------------------ */
+/*  B F _ E d g e _ 3 F Q   a n d   B F _ E d g e _ 3 V Z                   */
+/* ------------------------------------------------------------------------ */
+
+/* Second-order facet functions of quadrangular facets (prism facets 1, 3, 4,
+   and boundary quadrangles, which carry their exact traces) */
+
+static void BF_Edge_3FQ(struct Element *Element, int NumEntity, int Index,
+                        double u, double v, double w, double s[])
+{
+  double f, df[3], dg[3];
+  Quad_FacetFunction(Element, NumEntity, Index, u, v, w, &f, df, dg);
+  for(int i = 0; i < 3; i++) s[i] = f * dg[i];
+}
+
+static void BF_CurlEdge_3FQ(struct Element *Element, int NumEntity, int Index,
+                            double u, double v, double w, double s[])
+{
+  double f, df[3], dg[3];
+  Quad_FacetFunction(Element, NumEntity, Index, u, v, w, &f, df, dg);
+  Cross(df, dg, s);
+}
+
+void BF_Edge_3FQ_a(struct Element *Element, int NumEntity, double u, double v,
+                   double w, double s[])
+{ BF_Edge_3FQ(Element, NumEntity, 1, u, v, w, s); }
+
+void BF_Edge_3FQ_b(struct Element *Element, int NumEntity, double u, double v,
+                   double w, double s[])
+{ BF_Edge_3FQ(Element, NumEntity, 2, u, v, w, s); }
+
+void BF_Edge_3FQ_c(struct Element *Element, int NumEntity, double u, double v,
+                   double w, double s[])
+{ BF_Edge_3FQ(Element, NumEntity, 3, u, v, w, s); }
+
+void BF_CurlEdge_3FQ_a(struct Element *Element, int NumEntity, double u,
+                       double v, double w, double s[])
+{ BF_CurlEdge_3FQ(Element, NumEntity, 1, u, v, w, s); }
+
+void BF_CurlEdge_3FQ_b(struct Element *Element, int NumEntity, double u,
+                       double v, double w, double s[])
+{ BF_CurlEdge_3FQ(Element, NumEntity, 2, u, v, w, s); }
+
+void BF_CurlEdge_3FQ_c(struct Element *Element, int NumEntity, double u,
+                       double v, double w, double s[])
+{ BF_CurlEdge_3FQ(Element, NumEntity, 3, u, v, w, s); }
+
+/* Prism bubble lambda_1 lambda_2 lambda_3 grad(w): without it the curl of the
+   space misses linear fields along w whenever the bottom and top triangular
+   facets select different facet functions */
+
+void BF_Edge_3VZ(struct Element *Element, int NumEntity, double u, double v,
+                 double w, double s[])
+{
+  s[0] = s[1] = s[2] = 0.;
+  if(!Is_Prism(Element->Type)) {
+    Message::Error("BF_Edge_3VZ is only defined for prisms");
+    return;
+  }
+  s[2] = (1. - u - v) * u * v;
+}
+
+void BF_CurlEdge_3VZ(struct Element *Element, int NumEntity, double u, double v,
+                     double w, double s[])
+{
+  s[0] = s[1] = s[2] = 0.;
+  if(!Is_Prism(Element->Type)) {
+    Message::Error("BF_CurlEdge_3VZ is only defined for prisms");
+    return;
+  }
+  s[0] = u * (1. - u - 2. * v);
+  s[1] = -v * (1. - 2. * u - v);
 }

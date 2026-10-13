@@ -87,6 +87,8 @@ int *Geo_GetNodesOfEdgeInElement(struct Geo_Element *Geo_Element, int Num_Edge);
 void Geo_CreateFacetsOfElement(struct Geo_Element *Geo_Element);
 int *Geo_GetNodesOfFacetInElement(struct Geo_Element *Geo_Element,
                                   int Num_Facet);
+int Geo_GetNbrNodesOfFacetInElement(struct Geo_Element *Geo_Element,
+                                    int Num_Facet);
 
 int *Geo_GetIM_Den(int Type_Element, int *Nbe);
 int *Geo_GetIM_Dfe(int Type_Element, int *Nbf);

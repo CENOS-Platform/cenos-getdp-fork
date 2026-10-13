@@ -53,7 +53,7 @@ void Get_3Function3NbrForString(struct StringX3Function3Nbr SXF[],
                                 const char *string, int *FlagError,
                                 void (**Function1)(), void (**Function2)(),
                                 void (**Function3)(), double *Nbr1, int *Nbr2,
-                                int *Nbr3)
+                                int *Nbr3, int *Nbr4)
 {
   int i = 0;
 
@@ -64,6 +64,7 @@ void Get_3Function3NbrForString(struct StringX3Function3Nbr SXF[],
   *Nbr1 = SXF[i].Nbr1;
   *Nbr2 = SXF[i].Nbr2;
   *Nbr3 = SXF[i].Nbr3;
+  if(Nbr4) *Nbr4 = SXF[i].Nbr4;
   *FlagError = (SXF[i].string == NULL) ? 1 : 0;
 }
 

@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include "ProData.h"
+#include "ProDefine.h"
 #include "GeoData.h"
 #include "DofData.h"
 #include "Get_DofOfElement.h"
@@ -25,6 +26,31 @@ extern List_T *PreResolutionIndex_L;
 struct BasisFunction *BasisFunction_P;
 int Nbr_ElementaryBF, Flag_SubSpace;
 struct Group *GroupSupport_P, *GroupEntity_P;
+
+static bool Check_IsElementInSupport(struct Element *Element)
+{
+  return (GroupSupport_P->Type == REGIONLIST &&
+          List_Search(GroupSupport_P->InitialList, &Element->Region,
+                      fcmp_int)) ||
+         (GroupSupport_P->Type == ELEMENTLIST &&
+          Check_IsEntityInExtendedGroup(GroupSupport_P, Element->Num, 0));
+}
+
+// Facet-filtered functions belong to spaces that must be complete on every
+// element; a pyramid or hexahedron silently left without them would break
+// conformity
+static void Check_FacetFilteredSupport(struct Element *Element)
+{
+  const int unsupported = PYRAMID | PYRAMID_2 | PYRAMID_2_13N | PYRAMID_3 |
+                          HEXAHEDRON | HEXAHEDRON_2 | HEXAHEDRON_2_20N |
+                          HEXAHEDRON_3 | HEXAHEDRON_4;
+  if(BasisFunction_P->FacetFilter &&
+     !(BasisFunction_P->ElementType & Element->Type) &&
+     (Element->Type & unsupported) && Check_IsElementInSupport(Element))
+    Message::Error("Basis function '%s' is not defined on %s elements",
+                   BasisFunction_P->Name,
+                   Get_StringForDefine(Element_Type, Element->Type));
+}
 
 /* ------------------------------------------------------------------------ */
 /*  G e t _ I n i t D o f O f E l e m e n t                                 */
@@ -99,13 +125,11 @@ void Get_DofOfElement(struct Element *Element,
        the interpolation order is lower or equal to the maximum order allowed
        the element is in the support of the BasisFunction */
 
+    Check_FacetFilteredSupport(Element);
+
     if((BasisFunction_P->ElementType & Current.Element->Type) &&
        (Flag_ORDER < 0. || BasisFunction_P->Order <= Flag_ORDER) &&
-       ((GroupSupport_P->Type == REGIONLIST &&
-         List_Search(GroupSupport_P->InitialList, &Element->Region,
-                     fcmp_int)) ||
-        (GroupSupport_P->Type == ELEMENTLIST &&
-         Check_IsEntityInExtendedGroup(GroupSupport_P, Element->Num, 0)))) {
+       Check_IsElementInSupport(Element)) {
       GroupEntity_P = (struct Group *)List_Pointer(
         Problem_S.Group, BasisFunction_P->EntityIndex);
 
@@ -577,6 +601,11 @@ void Get_CodesOfElement(struct FunctionSpace *FunctionSpace_P,
           (Node, Edge, Facet, Volume, GroupOfNodes, Region, ...)  */
 
   for(i_Entity = StartingIndex; i_Entity < Nbr_Entity; i_Entity++) {
+    if(TypeConstraint == FACETSOF && BasisFunction_P->FacetFilter &&
+       Geo_GetNbrNodesOfFacetInElement(Current.Element->GeoElement,
+                                       i_Entity) != BasisFunction_P->FacetFilter)
+      continue;
+
     Code_BasisFunction =
       BasisFunction_P->Num + (Num_SubFunction ? Num_SubFunction[i_Entity] : 0);
 
