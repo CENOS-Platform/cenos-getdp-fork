@@ -18,7 +18,9 @@ extern struct CurrentData Current;
    smallest global node number */
 
 int fcmp_Int2(const void *a, const void *b)
-{ return ((struct TwoInt *)a)->Int2 - ((struct TwoInt *)b)->Int2; }
+{
+  return ((struct TwoInt *)a)->Int2 - ((struct TwoInt *)b)->Int2;
+}
 
 int Get_FacetFunctionIndex(struct Element *Element, int NumEntity, int NumIndex)
 {
@@ -265,7 +267,9 @@ static void Quad_FacetFunction(struct Element *Element, int NumEntity,
 
 void BF_Edge_3E(struct Element *Element, int NumEntity, double u, double v,
                 double w, double s[])
-{ Message::Error("You should never end up here!"); }
+{
+  Message::Error("You should never end up here!");
+}
 
 #undef WrongNumEntity
 
@@ -466,15 +470,21 @@ void BF_Edge_3F(struct Element *Element, int NumEntity, int Index, double u,
 
 void BF_Edge_3F_a(struct Element *Element, int NumEntity, double u, double v,
                   double w, double s[])
-{ BF_Edge_3F(Element, NumEntity, 1, u, v, w, s); }
+{
+  BF_Edge_3F(Element, NumEntity, 1, u, v, w, s);
+}
 
 void BF_Edge_3F_b(struct Element *Element, int NumEntity, double u, double v,
                   double w, double s[])
-{ BF_Edge_3F(Element, NumEntity, 2, u, v, w, s); }
+{
+  BF_Edge_3F(Element, NumEntity, 2, u, v, w, s);
+}
 
 void BF_Edge_3F_c(struct Element *Element, int NumEntity, double u, double v,
                   double w, double s[])
-{ BF_Edge_3F(Element, NumEntity, 3, u, v, w, s); }
+{
+  BF_Edge_3F(Element, NumEntity, 3, u, v, w, s);
+}
 
 /* -------- */
 /*  Volume  */
@@ -482,7 +492,9 @@ void BF_Edge_3F_c(struct Element *Element, int NumEntity, double u, double v,
 
 void BF_Edge_3V(struct Element *Element, int NumEntity, double u, double v,
                 double w, double s[])
-{ Message::Error("You should never end up here!"); }
+{
+  Message::Error("You should never end up here!");
+}
 
 /* ------------------------------------------------------------------------ */
 /*  B F _ C u r l E d g e _ 3                                               */
@@ -496,7 +508,9 @@ void BF_Edge_3V(struct Element *Element, int NumEntity, double u, double v,
 
 void BF_CurlEdge_3E(struct Element *Element, int NumEntity, double u, double v,
                     double w, double s[])
-{ Message::Error("You should never end up here!"); }
+{
+  Message::Error("You should never end up here!");
+}
 
 #undef WrongNumEntity
 
@@ -697,15 +711,21 @@ void BF_CurlEdge_3F(struct Element *Element, int NumEntity, int Index, double u,
 
 void BF_CurlEdge_3F_a(struct Element *Element, int NumEntity, double u,
                       double v, double w, double s[])
-{ BF_CurlEdge_3F(Element, NumEntity, 1, u, v, w, s); }
+{
+  BF_CurlEdge_3F(Element, NumEntity, 1, u, v, w, s);
+}
 
 void BF_CurlEdge_3F_b(struct Element *Element, int NumEntity, double u,
                       double v, double w, double s[])
-{ BF_CurlEdge_3F(Element, NumEntity, 2, u, v, w, s); }
+{
+  BF_CurlEdge_3F(Element, NumEntity, 2, u, v, w, s);
+}
 
 void BF_CurlEdge_3F_c(struct Element *Element, int NumEntity, double u,
                       double v, double w, double s[])
-{ BF_CurlEdge_3F(Element, NumEntity, 3, u, v, w, s); }
+{
+  BF_CurlEdge_3F(Element, NumEntity, 3, u, v, w, s);
+}
 
 /* -------- */
 /*  Volume  */
@@ -713,7 +733,9 @@ void BF_CurlEdge_3F_c(struct Element *Element, int NumEntity, double u,
 
 void BF_CurlEdge_3V(struct Element *Element, int NumEntity, double u, double v,
                     double w, double s[])
-{ Message::Error("You should never end up here!"); }
+{
+  Message::Error("You should never end up here!");
+}
 
 /* ------------------------------------------------------------------------ */
 /*  B F _ E d g e _ 3 F Q   a n d   B F _ E d g e _ 3 V Z                   */
