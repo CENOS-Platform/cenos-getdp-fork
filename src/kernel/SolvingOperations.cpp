@@ -46,7 +46,7 @@ extern int TreatmentStatus;
 
 extern int Flag_POS;
 extern int Flag_RESTART;
-extern int Flag_BIN, Flag_SPLIT, Flag_SPARSITY_PATTERN;
+extern int Flag_BIN, Flag_SPLIT, Flag_SPARSITY_PATTERN, Flag_REUSE_PATTERN;
 
 extern char *Name_Generic, *Name_Path;
 extern char *Name_MshFile, *Name_ResFile[NBR_MAX_RES];
@@ -178,11 +178,11 @@ void Init_SystemData(struct DofData *DofData_P, int Flag_Jac)
 
 bool ReuseMatrixPattern()
 {
-  static const bool reuse = [] {
+  static const bool env = [] {
     const char *v = getenv("GETDP_REUSE_PATTERN");
     return v && *v && strcmp(v, "0");
   }();
-  return reuse;
+  return Flag_REUSE_PATTERN || env;
 }
 
 static void ZeroMatrix(gMatrix *M, gSolver *S, int N, bool recreate = false)
