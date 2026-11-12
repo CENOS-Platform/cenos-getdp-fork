@@ -8,8 +8,10 @@
 //   Ruth Sabariego
 //
 
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <map>
 #include <set>
 #include <string>
 #include "GetDPConfig.h"
@@ -44,7 +46,7 @@ extern int TreatmentStatus;
 
 extern int Flag_POS;
 extern int Flag_RESTART;
-extern int Flag_BIN, Flag_SPLIT, Flag_SPARSITY_PATTERN;
+extern int Flag_BIN, Flag_SPLIT, Flag_SPARSITY_PATTERN, Flag_REUSE_PATTERN;
 
 extern char *Name_Generic, *Name_Path;
 extern char *Name_MshFile, *Name_ResFile[NBR_MAX_RES];
@@ -174,8 +176,32 @@ void Init_SystemData(struct DofData *DofData_P, int Flag_Jac)
 /*  G e n e r a t e _ S y s t e m                                           */
 /* ------------------------------------------------------------------------ */
 
-static void ZeroMatrix(gMatrix *M, gSolver *S, int N)
+bool ReuseMatrixPattern()
 {
+  static const bool env = [] {
+    const char *v = getenv("GETDP_REUSE_PATTERN");
+    return v && *v && strcmp(v, "0");
+  }();
+  return Flag_REUSE_PATTERN || env;
+}
+
+static void ZeroMatrix(gMatrix *M, gSolver *S, int N, bool recreate = false)
+{
+  // Keeping the matrix lets PETSc skip the symbolic factorization (PARDISO's
+  // analysis phase). Only keep one a Generate has filled: assembling a fresh
+  // one drops its preallocation. The copy holds the backend handle, so
+  // recreation elsewhere is detected.
+  static std::map<gMatrix *, gMatrix> filled;
+  if(ReuseMatrixPattern() && !recreate) {
+    auto it = filled.find(M);
+    if(it != filled.end() && !memcmp(&it->second, M, sizeof(gMatrix))) {
+      // ReGenerate_System (SolveJac_AdaptRelax) adds JacNL terms to Jac
+      // without assembling it, and PETSc refuses to zero an unassembled matrix
+      LinAlg_AssembleMatrix(M);
+      LinAlg_ZeroMatrix(M);
+      return;
+    }
+  }
   // We destroy and recreate the matrix to avoid filling-in the mask when
   // generating systems on meshes with changing topologies (remeshing, moving
   // band, ..., e.g. in time loops) or when constraints are updated. Using
@@ -183,6 +209,7 @@ static void ZeroMatrix(gMatrix *M, gSolver *S, int N)
   // increases memory every time we reassemble.
   LinAlg_DestroyMatrix(M);
   LinAlg_CreateMatrix(M, S, N, N, true);
+  if(ReuseMatrixPattern()) filled[M] = *M;
 }
 
 void ExtrapolatingPolynomial(int degreewanted, struct DofData *DofData_P,
@@ -462,10 +489,10 @@ void Generate_System(struct DefineSystem *DefineSystem_P,
     }
     // recreate matrices with exact sparsity pattern - TODO: all matrices
     ZeroMatrix(&Current.DofData->A, &Current.DofData->Solver,
-               Current.DofData->NbrDof);
+               Current.DofData->NbrDof, true);
     if(Flag_Jac)
       ZeroMatrix(&Current.DofData->Jac, &Current.DofData->Solver,
-                 Current.DofData->NbrDof);
+                 Current.DofData->NbrDof, true);
     // cleanup vectors
     LinAlg_AssembleVector(&Current.DofData->b);
     LinAlg_ZeroVector(&Current.DofData->b);
