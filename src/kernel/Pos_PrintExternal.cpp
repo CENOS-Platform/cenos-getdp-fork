@@ -16,6 +16,7 @@
 #include "VTUExternalData.h"
 #include "EnsightExternalData.h"
 #include "ProDefine.h"
+#include "F.h"
 #include <fstream>
 #include <algorithm>
 #include <unordered_map>
@@ -189,6 +190,46 @@ Create_Order2PostElement(struct Geo_Element *GE, int Index,
   return PE;
 }
 
+/* ------------------------------------------------------------------------ */
+/*  ComplexParts: Norm, Re and Im outputs from one complex evaluation        */
+/* ------------------------------------------------------------------------ */
+
+enum { PART_NORM = 0, PART_RE = 1, PART_IM = 2 };
+
+static int Get_NbrValueComponents(int Type)
+{
+  switch(Type) {
+  case SCALAR: return 1;
+  case VECTOR:
+  case TENSOR_DIAG: return 3;
+  case TENSOR_SYM: return 6;
+  case TENSOR: return 9;
+  default: return 0;
+  }
+}
+
+static void Get_ComplexPart(int Part, int Type, int NbrComp, const double *Src,
+                            struct Value *V)
+{
+  struct Value A, P;
+  Cal_ZeroValue(&A);
+  A.Type = Type;
+  for(int k = 0; k < Current.NbrHar; k++)
+    for(int c = 0; c < NbrComp; c++)
+      A.Val[MAX_DIM * k + c] = Src[NbrComp * k + c];
+  Cal_ZeroValue(&P);
+  switch(Part) {
+  case PART_NORM: F_Norm(NULL, &A, &P); break;
+  case PART_RE: F_Re(NULL, &A, &P); break;
+  default: F_Im(NULL, &A, &P); break;
+  }
+  // the "0 + term" of Cal_PostQuantity: it sets the sign of zeros, so the part
+  // is bitwise the value of a quantity defined as Norm/Re/Im[Source]
+  Cal_ZeroValue(V);
+  V->Type = P.Type;
+  Cal_AddValue(V, &P, V);
+}
+
 void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
                        struct DefineQuantity *DefineQuantity_P0,
                        struct QuantityStorage *QuantityStorage_P0,
@@ -273,6 +314,31 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     post_data->addElement(PE, Group_P->Num);
   }
 
+  // ComplexParts {Source, Norm, Re, Im, ...}: a listed Norm/Re/Im quantity is
+  // derived from one evaluation of its complex Source per node instead of
+  // evaluating its own expression, which repeats the Source evaluation.
+  int NbrPointQuantities = List_Nbr(PSO_P->PointQuantities);
+  int NbrComplexGroups =
+    PSO_P->ComplexParts ? List_Nbr(PSO_P->ComplexParts) / 4 : 0;
+  std::vector<int> partGroup(NbrPointQuantities, -1);
+  std::vector<int> partKind(NbrPointQuantities, -1);
+  for(int ipq = 0; ipq < NbrPointQuantities; ipq++) {
+    int q = *(int *)List_Pointer(PSO_P->PointQuantities, ipq);
+    for(int g = 0; g < NbrComplexGroups && partGroup[ipq] < 0; g++) {
+      for(int kind = PART_NORM; kind <= PART_IM; kind++) {
+        if(q == *(int *)List_Pointer(PSO_P->ComplexParts, 4 * g + 1 + kind)) {
+          partGroup[ipq] = g;
+          partKind[ipq] = kind;
+          break;
+        }
+      }
+    }
+  }
+  size_t NbrElementNodes = 0;
+  for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++)
+    NbrElementNodes +=
+      (*(struct PostElement **)List_Pointer(PostElement_L, iPost))->NbrNodes;
+
   // outer time loop
   struct PostQuantity *PostQuantity_P;
   for(int iTime = 0; iTime < Pos_InitTimeSteps(PSO_P); iTime++) {
@@ -301,12 +367,64 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
 	else
 		tdata.freq_value = 0;
 	
-  
+
+    // Im of a real-valued Source would read past its single harmonic
+    bool deriveParts = Current.NbrHar >= 2;
+    std::vector<std::vector<double> > sourceValues(NbrComplexGroups);
+    std::vector<int> sourceType(NbrComplexGroups, -1);
+    std::vector<int> sourceNbrComp(NbrComplexGroups, 0);
+    std::vector<int> partsLeft(NbrComplexGroups, 0);
+    for(int ipq = 0; ipq < NbrPointQuantities; ipq++)
+      if(partGroup[ipq] >= 0) partsLeft[partGroup[ipq]]++;
+
     for(int ipq = 0; ipq < List_Nbr(PSO_P->PointQuantities); ipq++) {
       PostQuantity_P = (struct PostQuantity *)List_Pointer(
         PostProcessing_P->PostQuantity,
         *(int *)List_Pointer(PSO_P->PointQuantities, ipq));
       PointDataSet pd_set(PostQuantity_P->Name);
+
+      int g = deriveParts ? partGroup[ipq] : -1;
+      if(g >= 0 && sourceValues[g].empty()) {
+        struct PostQuantity *Source_P = (struct PostQuantity *)List_Pointer(
+          PostProcessing_P->PostQuantity,
+          *(int *)List_Pointer(PSO_P->ComplexParts, 4 * g));
+        struct Value sourceValue;
+        size_t k = 0;
+        for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+          struct PostElement *PE =
+            *(struct PostElement **)List_Pointer(PostElement_L, iPost);
+          Element.GeoElement = Geo_GetGeoElement(PE->Index);
+          Element.Num = Element.GeoElement->Num;
+          Element.Type = Element.GeoElement->Type;
+          Current.Region = Element.Region = Element.GeoElement->Region;
+          Get_NodesCoordinatesOfElement(&Element);
+          for(int iNode = 0; iNode < PE->NbrNodes; iNode++, k++) {
+            Current.x = PE->x[iNode];
+            Current.y = PE->y[iNode];
+            Current.z = PE->z[iNode];
+            Cal_PostQuantity(Source_P, DefineQuantity_P0, QuantityStorage_P0,
+                             PSO_P->Distributed, NULL, &Element, PE->u[iNode],
+                             PE->v[iNode], PE->w[iNode], &sourceValue);
+            if(sourceType[g] < 0) {
+              sourceType[g] = sourceValue.Type;
+              sourceNbrComp[g] = Get_NbrValueComponents(sourceValue.Type);
+              sourceValues[g].resize(NbrElementNodes * sourceNbrComp[g] *
+                                     Current.NbrHar);
+            }
+            else if(sourceValue.Type != sourceType[g]) {
+              Message::Error("PrintExternal ComplexParts: '%s' changes value "
+                             "type between elements",
+                             Source_P->Name);
+            }
+            int nc = sourceNbrComp[g];
+            double *dst = &sourceValues[g][k * nc * Current.NbrHar];
+            for(int h = 0; h < Current.NbrHar; h++)
+              for(int c = 0; c < nc; c++)
+                dst[nc * h + c] = sourceValue.Val[MAX_DIM * h + c];
+          }
+        }
+      }
+      size_t kPart = 0;
       pd_set.groupName =
         (PSO_P->PartName != NULL) ?
           PSO_P->PartName :
@@ -324,14 +442,22 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
         Element.Type = Element.GeoElement->Type;
         Current.Region = Element.Region = Element.GeoElement->Region;
         Get_NodesCoordinatesOfElement(&Element);
-        for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
-          Current.x = PE->x[iNode];
-          Current.y = PE->y[iNode];
-          Current.z = PE->z[iNode];
-          Cal_PostQuantity(PostQuantity_P, DefineQuantity_P0,
-                           QuantityStorage_P0, PSO_P->Distributed, NULL,
-                           &Element, PE->u[iNode], PE->v[iNode],
-                           PE->w[iNode], &PE->Value[iNode]);
+        for(int iNode = 0; iNode < PE->NbrNodes; iNode++, kPart++) {
+          if(g >= 0) {
+            int nc = sourceNbrComp[g];
+            Get_ComplexPart(partKind[ipq], sourceType[g], nc,
+                            &sourceValues[g][kPart * nc * Current.NbrHar],
+                            &PE->Value[iNode]);
+          }
+          else {
+            Current.x = PE->x[iNode];
+            Current.y = PE->y[iNode];
+            Current.z = PE->z[iNode];
+            Cal_PostQuantity(PostQuantity_P, DefineQuantity_P0,
+                             QuantityStorage_P0, PSO_P->Distributed, NULL,
+                             &Element, PE->u[iNode], PE->v[iNode],
+                             PE->w[iNode], &PE->Value[iNode]);
+          }
           pd_set.setValueType(PE->Value[0].Type);
           std::vector<double> data_point(
             PE->Value[iNode].Val, PE->Value[iNode].Val + pd_set.data_size);
@@ -340,6 +466,8 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
                                data_point, Group_P->Num);
         }
       } /* PEs reused across quantities, freed at end of call */
+      if(g >= 0 && --partsLeft[g] == 0)
+        std::vector<double>().swap(sourceValues[g]);
 
       /* Perform Smoothing */ // Smoothing taken from Pos_Print
 

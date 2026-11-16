@@ -133,6 +133,7 @@ ClearVectors                 return tClearVectors;
 CodeName                     return tCodeName;
 Coefficient                  return tCoefficient;
 Comma                        return tComma;
+ComplexParts                 return tComplexParts;
 Const                        return tConstant;
 Constant                     return tConstant;
 Constraint                   return tConstraint;
