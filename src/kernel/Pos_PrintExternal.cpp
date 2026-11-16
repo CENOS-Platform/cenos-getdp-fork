@@ -314,6 +314,31 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
     post_data->addElement(PE, Group_P->Num);
   }
 
+  // Smoothing by mesh node instead of the coordinate tree of Pos_Print: the
+  // tolerance compare is not a strict ordering, so the tree misses or splits
+  // nodes ("Node not found"), and it was rebuilt for every quantity. Cut
+  // (Depth > 1), centroid (Depth 0) and Gauss PostElements carry no mesh node
+  // numbers and keep the tree.
+  bool smoothByNode = PSO_P->Smoothing && PSO_P->Depth == 1 && !PSO_P->Gauss;
+  std::vector<int> smoothIndex;
+  if(smoothByNode) {
+    for(int iPost = 0; iPost < List_Nbr(PostElement_L) && smoothByNode;
+        iPost++) {
+      struct PostElement *PE =
+        *(struct PostElement **)List_Pointer(PostElement_L, iPost);
+      for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
+        if(PE->NumNodes[iNode] == -1) {
+          smoothByNode = false;
+          break;
+        }
+        smoothIndex.push_back(post_data->node_map[PE->NumNodes[iNode]]);
+      }
+    }
+  }
+  std::vector<struct Value> smoothValue;
+  std::vector<int> smoothCount;
+  if(smoothByNode) smoothValue.resize(post_data->node_map.size());
+
   // ComplexParts {Source, Norm, Re, Im, ...}: a listed Norm/Re/Im quantity is
   // derived from one evaluation of its complex Source per node instead of
   // evaluating its own expression, which repeats the Source evaluation.
@@ -471,7 +496,41 @@ void Pos_PrintExternal(struct PostProcessing *PostProcessing_P, int Order,
 
       /* Perform Smoothing */ // Smoothing taken from Pos_Print
 
-      if(PSO_P->Smoothing) {
+      if(smoothByNode) {
+        smoothCount.assign(smoothValue.size(), 0);
+        size_t k = 0;
+        for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+          struct PostElement *PE =
+            *(struct PostElement **)List_Pointer(PostElement_L, iPost);
+          for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
+            int n = smoothIndex[k++];
+            int nb = smoothCount[n]++;
+            if(nb) {
+              // same running mean as the tree path, for identical values
+              double x1 = (double)(nb) / (double)(nb + 1.);
+              double x2 = 1. / (double)(nb + 1);
+              Cal_AddMultValue2(&smoothValue[n], x1, &PE->Value[iNode], x2);
+            }
+            else {
+              Cal_CopyValue(&PE->Value[iNode], &smoothValue[n]);
+            }
+          }
+        }
+        k = 0;
+        for(int iPost = 0; iPost < List_Nbr(PostElement_L); iPost++) {
+          struct PostElement *PE =
+            *(struct PostElement **)List_Pointer(PostElement_L, iPost);
+          for(int iNode = 0; iNode < PE->NbrNodes; iNode++) {
+            int n = smoothIndex[k++];
+            Cal_CopyValue(&smoothValue[n], &PE->Value[iNode]);
+            std::vector<double> data_point(
+              PE->Value[iNode].Val, PE->Value[iNode].Val + pd_set.data_size);
+            pd_set.addData(n, data_point);
+            pd_set.addDataRegion(n, data_point, Element.GeoElement->Region);
+          }
+        }
+      }
+      else if(PSO_P->Smoothing) {
         Tree_T *xyzv_T;
         double x1, x2;
         struct xyzv xyzv, *xyzv_P;
