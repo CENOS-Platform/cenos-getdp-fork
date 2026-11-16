@@ -66,7 +66,15 @@ void EnsightExternalData::write(std::string filename)
 
   for(size_t i = 0; i < parts.size(); i++) { groupElementTypes(parts[i]); }
 
-  addTime(); 
+  addTime();
+  int stepNow = (int)Ensight_Case.time_values.size() - 1;
+  for(auto &p : g_pendingVars) {
+    if(p.step != stepNow) {
+      // before addVariable replaces the data of the earlier step
+      FlushPendingVariables();
+      break;
+    }
+  }
   addVariable();
 
   // uncomment to get the Ensight ASCII format. Usefull for debugging.
@@ -78,9 +86,12 @@ void EnsightExternalData::write(std::string filename)
   // .geo and .case used to be rewritten on every PrintExternal call.
   // .geo: one per time step (its filename carries the step index).
   // .case: once at the end, when the full variable list is known.
-  if(getenv("GETDP_EAGER_GEOM")) {  // set to restore the old behaviour
-    writeGeometryBinary(filename);
-    writeCaseFile(filename);
+  if(getenv("GETDP_EAGER_GEOM")) {
+    // Readers between PostOperations (resFile_LAST copy, mechanics, motion
+    // restore) need complete files, but rewriting the accumulated geometry
+    // after every sub-operation cost ~1 min per step on large meshes.
+    g_eagerPending = true;
+    g_eagerName = filename;
   }
   else {
     // Ensight_Case.parts accumulates, so a step's geometry is only complete
@@ -98,9 +109,26 @@ void EnsightExternalData::write(std::string filename)
 int EnsightExternalData::g_pendingGeomStep = -1;
 bool EnsightExternalData::g_deferCase = false;
 std::string EnsightExternalData::g_deferName;
+bool EnsightExternalData::g_eagerPending = false;
+std::string EnsightExternalData::g_eagerName;
+
+void EnsightExternalData::FlushPostOperation()
+{
+  // otherwise no join: queued writes keep overlapping the next solve
+  if(!getenv("GETDP_EAGER_GEOM")) return;
+  // write() runs on the writer thread and sets g_eagerPending there
+  PostExternalData::JoinWrites();
+  if(!g_eagerPending) return;
+  FlushPendingVariables();
+  EnsightExternalData e;
+  e.writeGeometryBinary(g_eagerName);
+  e.writeCaseFile(g_eagerName);
+  g_eagerPending = false;
+}
 
 void EnsightExternalData::FlushDeferred()
 {
+  FlushPostOperation();
   PostExternalData::JoinWrites(); // all variable files must be on disk first
   if(g_deferCase) {
     EnsightExternalData e;
@@ -244,97 +272,96 @@ void EnsightExternalData::writeGeometryBinary(std::string fname, int stepOverrid
 // binary
 void EnsightExternalData::writeVariableBinary(std::string fname)
 {
-  FILE *fd = nullptr;
-  bool binary = true;
-  std::string current_filename;
-  char charBuffer[512];
   size_t last_time_step = 0; // Use always with LastTimeStep option!!!
-  
   int step_for_naming = Ensight_Case.time_values.size() - 1;
+  bool deferWrite = getenv("GETDP_EAGER_GEOM") != nullptr;
 
   // one file per quantity: this used to write only point_data[0] and silently
   // drop the rest of a PointData{...} list
   for(size_t ipd = 0; ipd < data_sets[last_time_step].point_data.size(); ipd++) {
-  char *pdName = data_sets[last_time_step].point_data[ipd].name;
-  fd = nullptr;
-  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d_n.%s", "resFile", 0,
-           step_for_naming, pdName);
-  current_filename = Fix_RelativePath(charBuffer, Name_Path);
-  current_filename = fname + charBuffer;
-  
-	for(int i = 0; i < 10; ++i) {
-	  fd = FOpen(current_filename.c_str(), binary ? "wb" : "w");
-	  if(fd) break;
-	  usleep(50 * 1000); // 50 ms
-	  // fd is NULL here; fprintf(fd,...) used to segfault on unopenable paths
-	  Message::Warning("Retrying opening file '%s' (attempt %d/10)",
-	                   current_filename.c_str(), i + 1);
-	}
+    char *pdName = data_sets[last_time_step].point_data[ipd].name;
+    if(deferWrite) {
+      // a variable file holds every part printed so far, so writing it on each
+      // PrintExternal rewrote the earlier regions again and again
+      bool pending = false;
+      for(auto &p : g_pendingVars)
+        if(p.name == pdName && p.step == step_for_naming && p.fname == fname)
+          pending = true;
+      if(!pending) g_pendingVars.push_back({fname, pdName, step_for_naming});
+    }
+    else if(!writeVariableFile(fname, pdName, step_for_naming)) {
+      return;
+    }
 
-  if (!fd) {
+    bool name_in_case = false;
+    for(auto name : Ensight_Case.postNames) {
+      if(name == pdName) { name_in_case = true; }
+    }
+    if(!name_in_case) {
+      Ensight_Case.postNames.push_back(pdName);
+      Ensight_Case.valueTypes.push_back(
+        data_sets[last_time_step].point_data[ipd].value_type);
+    }
+  } /* for ipd - one variable file per quantity */
+}
+
+std::vector<EnsightExternalData::PendingVariable>
+  EnsightExternalData::g_pendingVars;
+
+void EnsightExternalData::FlushPendingVariables()
+{
+  EnsightExternalData e;
+  for(auto &p : g_pendingVars) e.writeVariableFile(p.fname, p.name, p.step);
+  g_pendingVars.clear();
+}
+
+bool EnsightExternalData::writeVariableFile(const std::string &fname,
+                                            char *name, int step)
+{
+  char charBuffer[512];
+  snprintf(charBuffer, sizeof(charBuffer), "%s.%d.%05d_n.%s", "resFile", 0,
+           step, name);
+  std::string current_filename = fname + charBuffer;
+
+  FILE *fd = nullptr;
+  for(int i = 0; i < 10; ++i) {
+    fd = FOpen(current_filename.c_str(), "wb");
+    if(fd) break;
+    usleep(50 * 1000); // 50 ms
+    // fd is NULL here; fprintf(fd,...) used to segfault on unopenable paths
+    Message::Warning("Retrying opening file '%s' (attempt %d/10)",
+                     current_filename.c_str(), i + 1);
+  }
+  if(!fd) {
     Message::Error("writeVariableBinary: Unable to open file '%s', error %s",
                    current_filename.c_str(), strerror(errno));
-    return;
+    return false;
   }
- 
-  for(auto var : Ensight_Case.vars) {
-    if(var.first == pdName) {
-      WriteStringToFile(var.first, fd); // variable name
-      for(auto part : var.second) {
-        WriteStringToFile("part", fd);
-        WriteIntToFile(part.first + 1, fd);
-        WriteStringToFile("coordinates", fd);
-        size_t point_size = part.second.size();
-        size_t value_size = part.second[0].size();
-        for(size_t iVal = 0; iVal < value_size; iVal++) {
-          for(size_t iPoint = 0; iPoint < point_size; iPoint++) {
-            WriteFloatToFile(part.second[iPoint][iVal], fd);
-          }
-        }
+
+  // by reference: iterating Ensight_Case.vars by value deep-copied every
+  // stored variable for each file written
+  auto var = Ensight_Case.vars.find(name);
+  if(var != Ensight_Case.vars.end()) {
+    WriteStringToFile(var->first, fd); // variable name
+    std::vector<float> values;
+    for(auto &part : var->second) {
+      WriteStringToFile("part", fd);
+      WriteIntToFile(part.first + 1, fd);
+      WriteStringToFile("coordinates", fd);
+      size_t point_size = part.second.size();
+      size_t value_size = part.second[0].size();
+      values.resize(point_size * value_size);
+      for(size_t iPoint = 0; iPoint < point_size; iPoint++) {
+        const std::vector<double> &v = part.second[iPoint];
+        for(size_t iVal = 0; iVal < value_size; iVal++)
+          values[iVal * point_size + iPoint] = (float)v[iVal];
       }
+      fwrite(values.data(), sizeof(float), values.size(), fd);
     }
   }
   fflush(fd);
-
-  // KEEP THIS AS A TEMPLATE IN CASE WE WANT TO INCLUDE MORE THAN ONE REGION FOR
-  // A VARIABLE
-  // 			PrintExternal[ PointData {afield}, OnElementsOf
-  // Region[{ind,wp,air}], File "..\rawresults\dan\", Format ENSIGHT
-  // ,LastTimeStepOnly];
-  // WriteStringToFile(data_sets[last_time_step].point_data[0].name, fd);
-  // for(size_t i = 0; i < parts.size(); i++) {
-  //  WriteStringToFile("part", fd);
-  //  WriteIntToFile(parts[i].part, fd);
-  //  WriteStringToFile("coordinates", fd);
-  //  size_t offset = (i == 0) ? 0 : parts[i - 1].nodes.size();
-
-  //  for(size_t iData = 0; iData < data_sets[last_time_step].point_data.size();
-  //      iData++) {
-  //    for(int iVal = 0;
-  //        iVal < data_sets[last_time_step].point_data[iData].data_size;
-  //        iVal++) {
-  //      for(size_t iPoint = offset; iPoint < (offset + parts[i].nodes.size());
-  //          iPoint++) { // node_map.size()
-
-  //        WriteFloatToFile(data_sets[last_time_step]
-  //                           .point_data[iData]
-  //                           .data[node_map[parts[i].nodes[iPoint]]][iVal],
-  //                         fd);
-  //      }
-  //    }
-  //  }
-  //}
-  bool name_in_case = false;
-  for(auto name : Ensight_Case.postNames) {
-    if(name == pdName) { name_in_case = true; }
-  }
-  if(!name_in_case) {
-    Ensight_Case.postNames.push_back(pdName);
-    Ensight_Case.valueTypes.push_back(
-      data_sets[last_time_step].point_data[ipd].value_type);
-  }
   fclose(fd);
-  } /* for ipd - one variable file per quantity */
+  return true;
 }
 // ascii
 void EnsightExternalData::writeGeometryASCII(std::string fname)
