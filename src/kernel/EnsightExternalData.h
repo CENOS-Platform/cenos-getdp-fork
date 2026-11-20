@@ -9,6 +9,18 @@ public:
   static bool g_deferCase;
   static std::string g_deferName;
   static void FlushDeferred();
+  static bool g_eagerPending;
+  static std::string g_eagerName;
+  // GETDP_EAGER_GEOM: write the step's .geo, .case and variable files once per
+  // PostOperation
+  static void FlushPostOperation();
+  struct PendingVariable {
+    std::string fname;
+    char *name;
+    int step;
+  };
+  static std::vector<PendingVariable> g_pendingVars;
+  static void FlushPendingVariables();
 private:
   // EnSight has no complete quad9/hexa27/penta18/pyramid14 cells: Order 2
   // exports the serendipity types (see Pos_PrintExternal.cpp)
@@ -54,6 +66,7 @@ public:
   void writeCaseFile(std::string fname);
   void writeVariableASCII(std::string fname);
   void writeVariableBinary(std::string fname);
+  bool writeVariableFile(const std::string &fname, char *name, int step);
   void writeGeometryASCII(std::string fname);
   void writeGeometryBinary(std::string fname, int stepOverride = -1);
 

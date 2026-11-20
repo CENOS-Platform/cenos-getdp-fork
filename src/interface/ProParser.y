@@ -376,6 +376,7 @@ struct doubleXstring{
 %token        tCosineTransform tTimeToHarmonic
 %token        tValueIndex tValueName
 %token        tFormat tHeader tFooter tSkin tSmoothing tPartName tSetFrequencyScale
+%token        tComplexParts
 %token        tTarget tSort tIso tNoNewLine tNoTitle tDecomposeInSimplex tChangeOfValues
 %token        tTimeLegend tFrequencyLegend tEigenvalueLegend
 %token        tStoreInRegister tStoreInVariable
@@ -7532,6 +7533,7 @@ PostSubOperations :
       PostSubOperation_S.TimeInterval[1] = 0.;
       PostSubOperation_S.Distributed = false;
       PostSubOperation_S.ElementOrder = 1;
+      PostSubOperation_S.ComplexParts = NULL;
      }
     PostSubOperation
     {
@@ -8414,6 +8416,14 @@ PrintExternalOption :
       if(PostSubOperation_S.ElementOrder != 1 && PostSubOperation_S.ElementOrder != 2)
         vyyerror(0, "PrintExternal: Order must be 1 or 2, not %d",
                  PostSubOperation_S.ElementOrder);
+    }
+  | ',' tComplexParts ListOfPostQuantities
+    {
+      if(List_Nbr($3) % 4)
+        vyyerror(0, "PrintExternal: ComplexParts takes groups of four "
+                 "quantities {Source, Norm, Re, Im}, not %d quantities",
+                 List_Nbr($3));
+      PostSubOperation_S.ComplexParts = $3;
     }
  ;
 

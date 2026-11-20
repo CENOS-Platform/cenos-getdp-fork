@@ -19,6 +19,7 @@
 #include "SolvingOperations.h"
 #include "MallocUtils.h"
 #include "Message.h"
+#include "EnsightExternalData.h"
 
 #define TWO_PI 6.2831853071795865
 
@@ -261,6 +262,7 @@ void Treatment_PostOperation(struct Resolution *Resolution_P,
       }
     }
   }
+  EnsightExternalData::FlushPostOperation();
 
   // Synchronizing all ranks after distributed post-operations:
   // variables and registers computed from distributed post-operations must be broadcasted to all ranks
